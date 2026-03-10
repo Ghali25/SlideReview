@@ -71,6 +71,14 @@
     display:flex; align-items:center; justify-content:center;
   }
   .slide-container.has-image { background:#f0f0f0; }
+  .slide-clear-btn {
+    position:absolute; top:8px; right:8px; z-index:10;
+    width:24px; height:24px; border-radius:50%;
+    background:rgba(0,0,0,0.5); color:#fff; border:none;
+    font-size:14px; line-height:1; cursor:pointer; display:none;
+    align-items:center; justify-content:center;
+  }
+  .slide-container.has-image .slide-clear-btn { display:flex; }
   #slidePreview {
     width:100%; height:auto; display:none;
     transition:filter 0.8s ease;
@@ -149,14 +157,37 @@
   .empty-state p { font-size:14px; line-height:1.6; max-width:320px; }
 
   /* LOADING */
-  .loading-state { display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; flex:1; }
-  .spinner {
-    width:48px; height:48px; border-radius:50%;
-    border:3px solid var(--border); border-top-color:var(--accent1);
-    animation:spin 0.8s linear infinite;
+  .loading-state { display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; flex:1; padding:40px; }
+  .loading-icon { font-size:36px; animation:pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.1);opacity:0.7} }
+  .loading-step { font-size:14px; font-weight:600; color:var(--text); text-align:center; min-height:20px; }
+  .loading-substep { font-size:12px; color:var(--muted); text-align:center; min-height:16px; }
+  .progress-bar-track {
+    width:100%; max-width:320px; height:6px;
+    background:var(--surface2); border-radius:3px; overflow:hidden;
   }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .loading-text { color:var(--muted); font-size:14px; }
+  .progress-bar-fill {
+    height:100%; border-radius:3px;
+    background:var(--grad); width:0%;
+    transition:width 0.6s ease;
+  }
+  .loading-steps-list {
+    display:flex; flex-direction:column; gap:8px; width:100%; max-width:320px;
+  }
+  .loading-step-item {
+    display:flex; align-items:center; gap:10px;
+    font-size:12px; color:var(--muted);
+  }
+  .loading-step-item.done { color:var(--ok); }
+  .loading-step-item.active { color:var(--text); font-weight:600; }
+  .step-dot {
+    width:18px; height:18px; border-radius:50%; flex-shrink:0;
+    border:2px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:10px;
+  }
+  .loading-step-item.done .step-dot { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .loading-step-item.active .step-dot { border-color:var(--accent1); animation:ring 1s ease infinite; }
+  @keyframes ring { 0%,100%{box-shadow:0 0 0 0 rgba(109,40,217,0.3)} 50%{box-shadow:0 0 0 4px rgba(109,40,217,0.1)} }
 
   /* VERDICT CARD */
   .verdict-card {
@@ -451,6 +482,7 @@
           <p>Votre slide apparaîtra ici</p>
         </div>
         <img id="slidePreview" alt="Slide preview">
+        <button class="slide-clear-btn" id="slideClearBtn" title="Supprimer la slide">✕</button>
       </div>
       <div class="annotations-list" id="annotationsList"></div>
 
@@ -474,8 +506,13 @@
     </div>
 
     <div class="loading-state" id="loadingState">
-      <div class="spinner"></div>
-      <div class="loading-text">Analyse en cours par le Senior Partner...</div>
+      <div class="loading-icon">🔍</div>
+      <div>
+        <div class="loading-step" id="loadingStep">Lecture de la slide...</div>
+        <div class="loading-substep" id="loadingSubstep">Envoi de l'image au modèle</div>
+      </div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="loading-steps-list" id="loadingStepsList"></div>
     </div>
 
     <!-- RESULTS (hidden until analysis) -->
@@ -571,6 +608,19 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
+document.getElementById('slideClearBtn').addEventListener('click', () => {
+  slidePreview.src = '';
+  slidePreview.style.display = 'none';
+  slideContainer.classList.remove('has-image');
+  slideContainer.querySelector('.slide-placeholder').style.display = 'block';
+  analyzeBtn.disabled = true;
+  fiveSecBtn.disabled = true;
+  fileInput.value = '';
+  clearAnnotations();
+  document.getElementById('fiveSecResult').style.display = 'none';
+  showEmpty();
+});
+
 // ── 5-SECOND TEST ─────────────────────────────────────────
 let fiveSecTimer = null;
 fiveSecBtn.addEventListener('click', () => {
@@ -643,12 +693,54 @@ function renderResults(data) {
   loadHistory();
 }
 
+const LOADING_STEPS = [
+  { label: 'Lecture de la slide',     sub: 'Envoi de l\'image au modèle',          pct: 15,  icon: '📤' },
+  { label: 'Analyse de la structure', sub: 'Évaluation du message et de la logique', pct: 35, icon: '🏗️' },
+  { label: 'Évaluation du design',    sub: 'Vérification des principes visuels',    pct: 55,  icon: '🎨' },
+  { label: 'Calcul de l\'impact',     sub: 'Test des 5 secondes simulé',            pct: 72,  icon: '⚡' },
+  { label: 'Rédaction du verdict',    sub: 'Formulation des recommandations',       pct: 88,  icon: '✍️' },
+  { label: 'Finalisation',            sub: 'Structuration de la réponse JSON',      pct: 97,  icon: '📋' },
+];
+
+let _loadingInterval = null;
+
 function showLoading() {
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('resultsSection').style.display = 'none';
   const ls = document.getElementById('loadingState');
   ls.style.display = 'flex';
   ls.style.flexDirection = 'column';
+
+  // Build steps list
+  const listEl = document.getElementById('loadingStepsList');
+  listEl.innerHTML = LOADING_STEPS.map((s, i) => `
+    <div class="loading-step-item" id="lstep-${i}">
+      <div class="step-dot">${s.icon}</div>
+      <span>${s.label}</span>
+    </div>`).join('');
+
+  document.getElementById('progressFill').style.width = '5%';
+  document.getElementById('loadingStep').textContent = LOADING_STEPS[0].label;
+  document.getElementById('loadingSubstep').textContent = LOADING_STEPS[0].sub;
+
+  let stepIdx = 0;
+  // Timing: spread steps over ~25s (typical Claude response time)
+  const delays = [0, 3000, 7000, 12000, 18000, 23000];
+
+  LOADING_STEPS.forEach((s, i) => {
+    setTimeout(() => {
+      // Mark previous as done
+      if (i > 0) {
+        const prev = document.getElementById(`lstep-${i-1}`);
+        if (prev) { prev.classList.remove('active'); prev.classList.add('done'); prev.querySelector('.step-dot').textContent = '✓'; }
+      }
+      const cur = document.getElementById(`lstep-${i}`);
+      if (cur) cur.classList.add('active');
+      document.getElementById('loadingStep').textContent = s.label;
+      document.getElementById('loadingSubstep').textContent = s.sub;
+      document.getElementById('progressFill').style.width = s.pct + '%';
+    }, delays[i]);
+  });
 }
 
 function showEmpty() {
