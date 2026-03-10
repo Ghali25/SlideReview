@@ -30,6 +30,10 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = None  # We handle redirects manually via JSON
 
+# Create tables on first request (works with gunicorn)
+with app.app_context():
+    db.create_all()
+
 oauth = OAuth(app)
 google = oauth.register(
     name="google",
