@@ -1,0 +1,80 @@
+{
+  "expectations": [
+    {
+      "text": "Le score global est inférieur à 45 sur 100",
+      "passed": true,
+      "evidence": "Score total : 16/100 (Structure 22, Design 18, Impact 10, Message 15). Largement en dessous de 45."
+    },
+    {
+      "text": "La review critique explicitement le sous-titre trop long comme un problème majeur",
+      "passed": true,
+      "evidence": "\"Le sous-titre fait 37 mots : 'synthèse des travaux du groupe de travail transversal...' — c'est du bruit conceptuel. Zéro information transmise.\""
+    },
+    {
+      "text": "La review critique l'utilisation de paragraphes en prose au lieu de bullets structurés",
+      "passed": true,
+      "evidence": "\"Le corps est rédigé en prose dense sans structuration. Les principes Minto et BLUF (Bottom Line Up Front) sont absents : la conclusion n'est jamais énoncée.\""
+    },
+    {
+      "text": "L'absence de données chiffrées est mentionnée comme une faiblesse",
+      "passed": true,
+      "evidence": "\"Aucune donnée chiffrée. Des 'recommandations stratégiques' sans chiffres, c'est de l'opinion, pas de la recommandation.\""
+    },
+    {
+      "text": "L'image stock décorative est critiquée (data-ink ratio ou élément sans valeur informative)",
+      "passed": true,
+      "evidence": "\"L'image de stock... ne porte aucune information. C'est de la décoration pure.\" et \"Le ratio données/encre (Tufte) est catastrophique : 40% de l'espace est une photo inutile.\""
+    },
+    {
+      "text": "Le verdict est REFAIRE",
+      "passed": true,
+      "evidence": "Verdict : \"REFAIRE\" — premier mot après le titre."
+    },
+    {
+      "text": "Un titre-action reformulé concret est proposé",
+      "passed": true,
+      "evidence": "\"Trois leviers digitaux et RH permettent de récupérer 10–15% de performance opérationnelle d'ici Q4 2025\" — titre-action complet avec chiffres et horizon temporel."
+    },
+    {
+      "text": "La suppression du sous-titre ou de l'image est recommandée",
+      "passed": true,
+      "evidence": "\"Supprimez immédiatement l'image de stock\" et \"Le sous-titre en entier\" listé dans les éléments à supprimer complètement."
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1.000
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 4,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 4120,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 112.7,
+    "total_duration_seconds": 112.7
+  },
+  "claims": [
+    {
+      "claim": "La skill compte précisément les mots du sous-titre (37 mots)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Le sous-titre original compte effectivement ~37 mots. Chiffre exact et pertinent pour illustrer le problème."
+    },
+    {
+      "claim": "La skill cite Tufte (data-ink ratio) explicitement",
+      "type": "process",
+      "verified": true,
+      "evidence": "\"Le ratio données/encre (Tufte) est catastrophique\" — référence au framework explicite."
+    }
+  ],
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "Review parfaite sur tous les critères. La skill excelle sur les slides catastrophiques — son cadre de référence est bien adapté aux erreurs graves."
+  }
+}

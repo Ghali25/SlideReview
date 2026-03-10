@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "bonne-slide-action-title",
+  "prompt": "Slide avec titre-action fort, 3 bullets quantifiés, graphique propre — slide de qualité",
+  "assertions": [
+    "Le score global est supérieur à 70 sur 100",
+    "La review reconnaît le titre comme un titre-action fort avec une conclusion claire",
+    "Les bullets quantifiés (€2.1M, €0.9M, €0.4M) sont mentionnés positivement",
+    "Le verdict est PRÊT POUR LE CLIENT ou À RETRAVAILLER avec seulement des remarques mineures",
+    "La review utilise les 4 sections structurées",
+    "Le test des 5 secondes est mentionné positivement"
+  ]
+}

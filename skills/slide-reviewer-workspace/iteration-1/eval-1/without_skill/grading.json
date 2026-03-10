@@ -1,0 +1,62 @@
+{
+  "expectations": [
+    {
+      "text": "Le score global est compris entre 35 et 65 sur 100",
+      "passed": true,
+      "evidence": "Note finale \"6/10\" soit 60/100 — dans la fourchette 35–65."
+    },
+    {
+      "text": "La review critique le titre comme étant un titre-sujet (topic title) et non un titre-action",
+      "passed": false,
+      "evidence": "La review suggère d'\"ajouter un sous-titre ou une phrase d'accroche\" mais ne qualifie jamais le titre de \"titre-sujet\" ni n'utilise le concept d'action title vs topic title. La critique est implicite, pas cadrée sur le framework Minto."
+    },
+    {
+      "text": "La review mentionne le trop grand nombre de bullets (6) ou la règle des 3 bullets max",
+      "passed": true,
+      "evidence": "\"Six bullets sans titre de message fort, c'est trop.\""
+    },
+    {
+      "text": "Un titre alternatif sous forme de phrase complète avec une conclusion est proposé",
+      "passed": true,
+      "evidence": "Propose une phrase d'accroche : \"Les coûts ont augmenté de 23% en 18 mois, portés par la logistique et les RH — des leviers d'optimisation ont été identifiés.\" Sous forme de phrase mais pas explicitement comme remplacement du titre."
+    },
+    {
+      "text": "La review utilise les 4 sections structurées : Structure du message, Design visuel, Impact & lisibilité, Suggestions de reformulation",
+      "passed": false,
+      "evidence": "Structure libre avec sections ad hoc (\"Points positifs\", \"Problèmes identifiés\", \"Recommandations prioritaires\"). Les 4 sections du framework skill-reviewer sont absentes."
+    },
+    {
+      "text": "Un tableau Score global est présent dans l'output",
+      "passed": false,
+      "evidence": "Aucun tableau de scores — juste une note narrative \"6/10\" en conclusion."
+    },
+    {
+      "text": "Le verdict est À RETRAVAILLER ou REFAIRE (pas PRÊT POUR LE CLIENT)",
+      "passed": false,
+      "evidence": "Pas de verdict structuré. La note \"6/10\" et \"La slide manque de message fort\" impliquent un travail nécessaire mais aucun label PRÊT/À RETRAVAILLER/REFAIRE."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 4,
+    "total": 7,
+    "pass_rate": 0.429
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 2,
+    "total_steps": 2,
+    "errors_encountered": 0,
+    "output_chars": 2156,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 68.4,
+    "total_duration_seconds": 68.4
+  },
+  "claims": [],
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "Sans skill, la review est utile mais non structurée et manque des frameworks clés (Minto, 5-second test, calibration par score)."
+  }
+}

@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlideReview — Feedback Senior Partner</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface2: #f0f1f5;
+    --border: #e2e4ea;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --accent1: #6d28d9;
+    --accent2: #1d4ed8;
+    --accent3: #0891b2;
+    --grad: linear-gradient(135deg, #6d28d9, #1d4ed8, #0891b2);
+    --ok: #059669;
+    --warn: #d97706;
+    --err: #dc2626;
+    --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; }
+
+  /* HEADER */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 32px; border-bottom:1px solid var(--border);
+    background:rgba(255,255,255,0.85); backdrop-filter:blur(12px);
+    position:sticky; top:0; z-index:100;
+  }
+  .logo {
+    font-size:20px; font-weight:700; letter-spacing:-0.5px;
+    background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .logo span { font-weight:300; }
+  .badge-partner {
+    font-size:11px; font-weight:600; padding:4px 10px;
+    background:rgba(109,40,217,0.08); border:1px solid rgba(109,40,217,0.25);
+    border-radius:20px; color:#6d28d9; letter-spacing:0.5px; text-transform:uppercase;
+  }
+
+  /* LAYOUT */
+  .app { display:grid; grid-template-columns:420px 1fr; height:calc(100vh - 61px); }
+
+  /* LEFT PANEL */
+  .left-panel { border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    margin:20px; border:2px dashed var(--border); border-radius:var(--radius);
+    padding:32px 20px; text-align:center; cursor:pointer; transition:all 0.2s;
+    background:var(--surface); position:relative; flex-shrink:0;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color:var(--accent1); background:rgba(124,58,237,0.05);
+  }
+  .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .upload-icon { font-size:36px; margin-bottom:10px; }
+  .upload-zone p { color:var(--muted); font-size:13px; }
+  .upload-zone strong { color:var(--text); font-size:15px; display:block; margin-bottom:4px; }
+
+  /* SLIDE PREVIEW */
+  .preview-section { overflow:hidden; display:flex; flex-direction:column; padding:0 20px 20px; }
+  .preview-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .slide-container {
+    border-radius:var(--radius); overflow:hidden; position:relative;
+    background:var(--surface); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .slide-container.has-image { background:#f0f0f0; }
+  #slidePreview {
+    width:100%; height:auto; display:none;
+    transition:filter 0.8s ease;
+  }
+  #slidePreview.blurred { filter:blur(18px) brightness(0.7); }
+  .slide-placeholder { color:var(--muted); font-size:13px; text-align:center; padding:40px 20px; }
+
+  /* ANNOTATIONS LIST */
+  .annotations-list {
+    margin-top:8px; display:none; flex-direction:column; gap:4px;
+  }
+  .annotations-list.visible { display:flex; }
+  .annotation-item {
+    border-radius:8px;
+    background:var(--surface); border:1px solid var(--border);
+    overflow:hidden; cursor:pointer;
+  }
+  .annotation-item-header {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 10px;
+  }
+  .annotation-item:hover .annotation-item-header { background:var(--surface2); }
+  .annotation-num {
+    flex-shrink:0; width:20px; height:20px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:700;
+  }
+  .annotation-num.error { background:var(--err); color:#fff; }
+  .annotation-num.warning { background:var(--warn); color:#000; }
+  .annotation-num.ok { background:var(--ok); color:#fff; }
+  .annotation-item-label { font-size:12px; font-weight:600; color:var(--text); flex:1; }
+  .annotation-chevron { font-size:10px; color:var(--muted); transition:transform 0.2s; }
+  .annotation-item.open .annotation-chevron { transform:rotate(90deg); }
+  .annotation-item-detail {
+    display:none; padding:0 10px 8px 38px;
+    font-size:11px; color:var(--muted); line-height:1.5;
+  }
+  .annotation-item.open .annotation-item-detail { display:block; }
+
+  /* 5-SECOND TEST BUTTON */
+  .five-sec-btn {
+    margin-top:10px; padding:10px; border-radius:var(--radius);
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); font-size:13px; cursor:pointer; width:100%;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:all 0.2s; font-weight:500;
+  }
+  .five-sec-btn:hover { border-color:var(--accent3); color:var(--accent3); }
+  .five-sec-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  #fiveSecResult {
+    margin-top:8px; padding:10px 14px; border-radius:8px;
+    background:rgba(8,145,178,0.06); border:1px solid rgba(8,145,178,0.25);
+    font-size:12px; color:#0369a1; line-height:1.5; display:none;
+  }
+
+  /* ANALYZE BUTTON */
+  .analyze-btn {
+    margin:0 20px 20px; padding:14px; border-radius:var(--radius);
+    background:var(--grad); border:none; color:#fff; font-size:15px;
+    font-weight:700; cursor:pointer; letter-spacing:0.3px;
+    transition:opacity 0.2s; flex-shrink:0;
+  }
+  .analyze-btn:hover { opacity:0.9; }
+  .analyze-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+  /* RIGHT PANEL */
+  .right-panel { overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:20px; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:var(--muted); text-align:center; gap:12px;
+  }
+  .empty-state .big-icon { font-size:64px; opacity:0.3; }
+  .empty-state p { font-size:14px; line-height:1.6; max-width:320px; }
+
+  /* LOADING */
+  .loading-state { display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; flex:1; }
+  .spinner {
+    width:48px; height:48px; border-radius:50%;
+    border:3px solid var(--border); border-top-color:var(--accent1);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { color:var(--muted); font-size:14px; }
+
+  /* VERDICT CARD */
+  .verdict-card {
+    padding:20px 24px; border-radius:var(--radius); border:1px solid;
+    display:flex; align-items:center; gap:16px;
+  }
+  .verdict-card.ok { background:rgba(16,185,129,0.08); border-color:rgba(16,185,129,0.3); }
+  .verdict-card.warn { background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.3); }
+  .verdict-card.err { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.3); }
+  .verdict-badge {
+    font-size:12px; font-weight:700; padding:6px 14px; border-radius:20px;
+    text-transform:uppercase; letter-spacing:1px; white-space:nowrap;
+  }
+  .ok .verdict-badge { background:var(--ok); color:#fff; }
+  .warn .verdict-badge { background:var(--warn); color:#000; }
+  .err .verdict-badge { background:var(--err); color:#fff; }
+  .verdict-text { flex:1; }
+  .verdict-title { font-weight:700; font-size:16px; margin-bottom:4px; }
+  .global-score { font-size:32px; font-weight:800; margin-left:auto; }
+  .ok .global-score { color:var(--ok); }
+  .warn .global-score { color:var(--warn); }
+  .err .global-score { color:var(--err); }
+
+  /* SCORE CARD */
+  .score-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:20px;
+  }
+  .score-card h3 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:16px; }
+  .score-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .score-item { }
+  .score-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .score-label { font-size:13px; font-weight:600; }
+  .score-value { font-size:18px; font-weight:800; }
+  .score-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .score-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+
+  /* TABS */
+  .tabs { display:flex; gap:4px; background:var(--surface); border-radius:var(--radius); padding:4px; border:1px solid var(--border); }
+  .tab-btn {
+    flex:1; padding:8px; border-radius:8px; background:transparent; border:none;
+    color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s;
+  }
+  .tab-btn.active { background:var(--surface2); color:var(--text); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* DIMENSIONS */
+  .dimension-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px; margin-bottom:12px;
+  }
+  .dim-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; cursor:pointer; }
+  .dim-score-badge {
+    font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px;
+    margin-left:auto;
+  }
+  .dim-title { font-weight:600; font-size:15px; }
+  .dim-body { }
+  .dim-section { margin-bottom:10px; }
+  .dim-section-label {
+    font-size:11px; text-transform:uppercase; letter-spacing:0.8px;
+    margin-bottom:6px; font-weight:600;
+  }
+  .dim-section-label.pos { color:var(--ok); }
+  .dim-section-label.neg { color:var(--err); }
+  .dim-section-label.rec { color:var(--accent3); }
+  .dim-list { list-style:none; display:flex; flex-direction:column; gap:4px; }
+  .dim-list li { font-size:13px; color:var(--muted); padding-left:14px; position:relative; line-height:1.5; }
+  .dim-list li::before { content:'•'; position:absolute; left:0; }
+  .dim-list.pos li::before { color:var(--ok); }
+  .dim-list.neg li::before { color:var(--err); }
+  .reco-box {
+    background:rgba(8,145,178,0.06); border:1px solid rgba(8,145,178,0.25);
+    border-radius:8px; padding:10px 14px; font-size:13px; color:#0369a1; line-height:1.5;
+  }
+
+  /* REFORMULATION */
+  .reformulation-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px;
+  }
+  .reform-row { margin-bottom:14px; }
+  .reform-label { font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px; }
+  .reform-before {
+    font-size:13px; padding:10px; background:rgba(239,68,68,0.06);
+    border-left:3px solid var(--err); border-radius:0 6px 6px 0; color:var(--muted);
+    text-decoration:line-through; text-decoration-color:rgba(239,68,68,0.5);
+  }
+  .reform-after {
+    font-size:13px; padding:10px; background:rgba(16,185,129,0.06);
+    border-left:3px solid var(--ok); border-radius:0 6px 6px 0; color:var(--text); font-weight:500;
+  }
+  .reform-body { font-size:13px; color:var(--muted); line-height:1.6; white-space:pre-wrap; }
+  .delete-list { display:flex; flex-direction:column; gap:4px; }
+  .delete-item {
+    font-size:12px; padding:6px 10px; background:rgba(220,38,38,0.05);
+    border-radius:6px; color:#b91c1c; display:flex; align-items:flex-start; gap:6px;
+  }
+  .delete-item::before { content:'✕'; color:var(--err); flex-shrink:0; }
+
+  /* TEMPLATES */
+  .templates-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .template-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px; cursor:pointer;
+    transition:all 0.2s; position:relative; overflow:hidden;
+  }
+  .template-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--card-color, var(--accent1));
+  }
+  .template-card:hover { border-color:var(--card-color, var(--accent1)); transform:translateY(-2px); }
+  .template-card.matched { border-color:var(--card-color, var(--accent1)); background:rgba(124,58,237,0.05); }
+  .template-card.matched::after {
+    content:'✓ Recommandé'; position:absolute; top:10px; right:10px;
+    font-size:10px; font-weight:700; color:#fff; padding:2px 8px;
+    background:var(--card-color, var(--accent1)); border-radius:10px;
+  }
+  .template-icon { font-size:24px; margin-bottom:8px; }
+  .template-name { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .template-desc { font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.4; }
+  .template-structure { display:flex; flex-direction:column; gap:3px; }
+  .template-row {
+    font-size:11px; color:var(--muted); padding:3px 6px;
+    background:var(--surface2); border-radius:4px;
+  }
+  .template-best { font-size:11px; color:var(--accent3); margin-top:8px; }
+
+  /* HISTORY */
+  .history-list { display:flex; flex-direction:column; gap:8px; }
+  .history-item {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:14px; display:flex; align-items:center; gap:12px;
+  }
+  .history-score {
+    width:44px; height:44px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;
+  }
+  .history-info { flex:1; min-width:0; }
+  .history-filename { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+  .history-verdict {
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:10px;
+    text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0;
+  }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--muted); margin-bottom:12px; font-weight:600;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+
+  /* RESPONSIVE adjustments */
+  @media (max-width: 900px) {
+    .app { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
+    .left-panel { border-right:none; border-bottom:1px solid var(--border); max-height:50vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Slide<span>Review</span></div>
+  <div class="badge-partner">Senior Partner AI</div>
+</header>
+
+<div class="app">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="upload-icon">🖼️</div>
+      <strong>Déposez votre slide ici</strong>
+      <p>PNG, JPG, WEBP — screenshot d'une planche</p>
+    </div>
+
+    <div class="preview-section">
+      <div class="preview-label">Aperçu</div>
+      <div class="slide-container" id="slideContainer">
+        <div class="slide-placeholder">
+          <div style="font-size:40px;margin-bottom:8px">📋</div>
+          <p>Votre slide apparaîtra ici</p>
+        </div>
+        <img id="slidePreview" alt="Slide preview">
+      </div>
+      <div class="annotations-list" id="annotationsList"></div>
+
+      <button class="five-sec-btn" id="fiveSecBtn" disabled>
+        <span>⏱️</span> Test des 5 secondes
+      </button>
+      <div id="fiveSecResult"></div>
+    </div>
+
+    <button class="analyze-btn" id="analyzeBtn" disabled>
+      Analyser la slide →
+    </button>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="big-icon">🎯</div>
+      <p>Uploadez un screenshot de votre slide et obtenez le feedback d'un Senior Partner de cabinet de conseil.</p>
+    </div>
+
+    <div class="loading-state" id="loadingState">
+      <div class="spinner"></div>
+      <div class="loading-text">Analyse en cours par le Senior Partner...</div>
+    </div>
+
+    <!-- RESULTS (hidden until analysis) -->
+    <div id="resultsSection" style="display:none; flex-direction:column; gap:20px;">
+
+      <!-- VERDICT -->
+      <div class="verdict-card" id="verdictCard">
+        <div>
+          <div class="verdict-badge" id="verdictBadge"></div>
+        </div>
+        <div class="verdict-text">
+          <div class="verdict-title" id="verdictTitle"></div>
+          <div style="font-size:12px; color:var(--muted); margin-top:2px;" id="slideTypeLabel"></div>
+        </div>
+        <div class="global-score" id="globalScore"></div>
+      </div>
+
+      <!-- SCORE CARD -->
+      <div class="score-card">
+        <h3>📊 Score Card</h3>
+        <div class="score-grid" id="scoreGrid"></div>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('dimensions')">💬 Dimensions</button>
+        <button class="tab-btn" onclick="switchTab('reformulation')">✏️ Reformulation</button>
+        <button class="tab-btn" onclick="switchTab('templates')">📐 Templates</button>
+        <button class="tab-btn" onclick="switchTab('history')">🕐 Historique</button>
+      </div>
+
+      <!-- TAB: DIMENSIONS -->
+      <div class="tab-content active" id="tab-dimensions">
+        <div id="dimensionsContainer"></div>
+      </div>
+
+      <!-- TAB: REFORMULATION -->
+      <div class="tab-content" id="tab-reformulation">
+        <div class="reformulation-card" id="reformulationCard"></div>
+      </div>
+
+      <!-- TAB: TEMPLATES -->
+      <div class="tab-content" id="tab-templates">
+        <div class="section-title">Templates recommandés pour votre slide</div>
+        <div class="templates-grid" id="templatesGrid"></div>
+      </div>
+
+      <!-- TAB: HISTORY -->
+      <div class="tab-content" id="tab-history">
+        <div class="section-title">Analyses récentes</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let currentAnalysis = null;
+let allTemplates = [];
+
+// ── FILE UPLOAD ──────────────────────────────────────────
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const slidePreview = document.getElementById('slidePreview');
+const slideContainer = document.getElementById('slideContainer');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const fiveSecBtn = document.getElementById('fiveSecBtn');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    slidePreview.src = e.target.result;
+    slidePreview.style.display = 'block';
+    slideContainer.classList.add('has-image');
+    slideContainer.querySelector('.slide-placeholder').style.display = 'none';
+    analyzeBtn.disabled = false;
+    fiveSecBtn.disabled = false;
+    clearAnnotations();
+    document.getElementById('fiveSecResult').style.display = 'none';
+    slidePreview.classList.remove('blurred');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── 5-SECOND TEST ─────────────────────────────────────────
+let fiveSecTimer = null;
+fiveSecBtn.addEventListener('click', () => {
+  if (fiveSecTimer) return;
+  slidePreview.classList.add('blurred');
+  fiveSecBtn.textContent = '⏳ 5...';
+  let count = 5;
+  fiveSecTimer = setInterval(() => {
+    count--;
+    fiveSecBtn.textContent = count > 0 ? `⏳ ${count}...` : '⏱️ Test des 5 secondes';
+    if (count <= 0) {
+      clearInterval(fiveSecTimer);
+      fiveSecTimer = null;
+      slidePreview.classList.remove('blurred');
+      if (currentAnalysis?.five_second_test) {
+        const el = document.getElementById('fiveSecResult');
+        el.textContent = '💭 ' + currentAnalysis.five_second_test;
+        el.style.display = 'block';
+      }
+    }
+  }, 1000);
+});
+
+// ── ANALYZE ──────────────────────────────────────────────
+analyzeBtn.addEventListener('click', async () => {
+  if (!fileInput.files[0] && !slidePreview.src.startsWith('data:')) {
+    alert('Veuillez d\'abord uploader une slide.');
+    return;
+  }
+
+  showLoading();
+
+  const formData = new FormData();
+  if (fileInput.files[0]) {
+    formData.append('image', fileInput.files[0]);
+  } else {
+    // Convert data URL to blob
+    const res = await fetch(slidePreview.src);
+    const blob = await res.blob();
+    formData.append('image', blob, 'slide.png');
+  }
+
+  try {
+    const resp = await fetch('/analyze', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.error) { alert('Erreur : ' + data.error); showEmpty(); return; }
+    currentAnalysis = data;
+    renderResults(data);
+  } catch(e) {
+    alert('Erreur réseau : ' + e.message);
+    showEmpty();
+  }
+});
+
+// ── RENDER RESULTS ────────────────────────────────────────
+function renderResults(data) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'none';
+  const rs = document.getElementById('resultsSection');
+  rs.style.display = 'flex';
+  rs.style.flexDirection = 'column';
+  rs.style.gap = '20px';
+
+  renderVerdict(data);
+  renderScoreCard(data.scores);
+  renderDimensions(data.dimensions);
+  renderReformulation(data.dimensions?.reformulation);
+  renderAnnotations(data.annotations);
+  loadAndRenderTemplates(data.template_matches);
+  loadHistory();
+}
+
+function showLoading() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsSection').style.display = 'none';
+  const ls = document.getElementById('loadingState');
+  ls.style.display = 'flex';
+  ls.style.flexDirection = 'column';
+}
+
+function showEmpty() {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
+}
+
+// VERDICT
+function renderVerdict(data) {
+  const card = document.getElementById('verdictCard');
+  const badge = document.getElementById('verdictBadge');
+  const title = document.getElementById('verdictTitle');
+  const score = document.getElementById('globalScore');
+  const typeLabel = document.getElementById('slideTypeLabel');
+
+  const v = data.verdict || '';
+  card.className = 'verdict-card';
+  if (v.includes('PRÊT')) card.classList.add('ok');
+  else if (v.includes('RETRAVAILLER')) card.classList.add('warn');
+  else card.classList.add('err');
+
+  badge.textContent = v;
+  title.textContent = v === 'PRÊT POUR LE CLIENT'
+    ? 'Cette slide est prête pour le client.'
+    : v === 'À RETRAVAILLER'
+    ? 'Cette slide nécessite des améliorations.'
+    : 'Cette slide doit être entièrement reprise.';
+
+  const typeMap = {
+    recommandation:'💡 Recommandation', etat_des_lieux:'📊 État des lieux',
+    comparaison:'⚖️ Comparaison', tendance:'📈 Tendance',
+    processus:'🔄 Processus', kpis:'🎛️ KPIs', minto:'🔺 Pyramide Minto', before_after:'✨ Avant/Après'
+  };
+  typeLabel.textContent = typeMap[data.slide_type] || data.slide_type || '';
+
+  score.textContent = (data.global_score || 0) + '/100';
+}
+
+// SCORE CARD
+function renderScoreCard(scores) {
+  if (!scores) return;
+  const dims = [
+    { key:'structure', label:'Structure & Logique', icon:'🧠' },
+    { key:'design',    label:'Design Visuel',       icon:'🎨' },
+    { key:'impact',    label:'Impact 5 sec',        icon:'⚡' },
+    { key:'message',   label:'Message',             icon:'✏️' },
+  ];
+  const grid = document.getElementById('scoreGrid');
+  grid.innerHTML = dims.map(d => {
+    const val = scores[d.key] || 0;
+    const color = val >= 75 ? 'var(--ok)' : val >= 50 ? 'var(--warn)' : 'var(--err)';
+    return `
+      <div class="score-item">
+        <div class="score-header">
+          <span class="score-label">${d.icon} ${d.label}</span>
+          <span class="score-value" style="color:${color}">${val}</span>
+        </div>
+        <div class="score-bar">
+          <div class="score-fill" style="width:${val}%; background:${color}"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// DIMENSIONS
+function renderDimensions(dims) {
+  if (!dims) return;
+  const container = document.getElementById('dimensionsContainer');
+  const sections = [
+    { key:'structure', label:'Structure & Logique', icon:'🧠' },
+    { key:'design',    label:'Design Visuel',       icon:'🎨' },
+    { key:'impact',    label:'Impact & Lisibilité', icon:'⚡' },
+  ];
+  container.innerHTML = sections.map(s => {
+    const d = dims[s.key] || {};
+    const positifs = (d.positifs || []).map(p => `<li>${p}</li>`).join('');
+    const problemes = (d.problemes || []).map(p => `<li>${p}</li>`).join('');
+    return `
+      <div class="dimension-card">
+        <div class="dim-header">
+          <span style="font-size:18px">${s.icon}</span>
+          <span class="dim-title">${s.label}</span>
+        </div>
+        <div class="dim-body">
+          ${positifs ? `<div class="dim-section">
+            <div class="dim-section-label pos">✓ Ce qui fonctionne</div>
+            <ul class="dim-list pos">${positifs}</ul>
+          </div>` : ''}
+          ${problemes ? `<div class="dim-section">
+            <div class="dim-section-label neg">✗ Problèmes</div>
+            <ul class="dim-list neg">${problemes}</ul>
+          </div>` : ''}
+          ${d.recommandation ? `<div class="dim-section">
+            <div class="dim-section-label rec">→ Recommandation prioritaire</div>
+            <div class="reco-box">${d.recommandation}</div>
+          </div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// REFORMULATION
+function renderReformulation(r) {
+  if (!r) return;
+  const card = document.getElementById('reformulationCard');
+  const supprimer = (r.supprimer || []).map(s => `<div class="delete-item">${s}</div>`).join('');
+  card.innerHTML = `
+    <div class="section-title" style="margin-bottom:16px">✏️ Suggestions de reformulation</div>
+    <div class="reform-row">
+      <div class="reform-label">Titre actuel</div>
+      <div class="reform-before">${r.titre_actuel || '—'}</div>
+    </div>
+    <div class="reform-row">
+      <div class="reform-label">Titre proposé</div>
+      <div class="reform-after">${r.titre_propose || '—'}</div>
+    </div>
+    ${r.corps_reformule ? `<div class="reform-row">
+      <div class="reform-label">Corps reformulé</div>
+      <div class="reform-body">${r.corps_reformule}</div>
+    </div>` : ''}
+    ${supprimer ? `<div class="reform-row">
+      <div class="reform-label">Éléments à supprimer</div>
+      <div class="delete-list">${supprimer}</div>
+    </div>` : ''}`;
+}
+
+// ANNOTATIONS
+function clearAnnotations() {
+  const list = document.getElementById('annotationsList');
+  list.innerHTML = '';
+  list.classList.remove('visible');
+}
+
+function renderAnnotations(annotations) {
+  clearAnnotations();
+  if (!annotations?.length) return;
+  const list = document.getElementById('annotationsList');
+
+  annotations.forEach((a, i) => {
+    const type = a.type || 'warning';
+    const item = document.createElement('div');
+    item.className = 'annotation-item';
+    item.innerHTML = `
+      <div class="annotation-item-header">
+        <div class="annotation-num ${type}">${i + 1}</div>
+        <span class="annotation-item-label">${a.label}</span>
+        <span class="annotation-chevron">▶</span>
+      </div>
+      <div class="annotation-item-detail">${a.detail}</div>`;
+    item.addEventListener('click', () => item.classList.toggle('open'));
+    list.appendChild(item);
+  });
+
+  list.classList.add('visible');
+}
+
+// TEMPLATES
+async function loadAndRenderTemplates(matches) {
+  if (!allTemplates.length) {
+    const resp = await fetch('/templates');
+    allTemplates = await resp.json();
+  }
+  renderTemplates(allTemplates, matches || []);
+}
+
+function renderTemplates(templates, matches) {
+  const grid = document.getElementById('templatesGrid');
+  grid.innerHTML = templates.map(t => {
+    const isMatch = matches.includes(t.id);
+    const rows = (t.structure || []).slice(0,4).map(r => `<div class="template-row">${r}</div>`).join('');
+    return `
+      <div class="template-card ${isMatch ? 'matched' : ''}" style="--card-color:${t.color}">
+        <div class="template-icon">${t.icon}</div>
+        <div class="template-name">${t.name}</div>
+        <div class="template-desc">${t.description}</div>
+        <div class="template-structure">${rows}</div>
+        <div class="template-best">→ ${t.best_for}</div>
+      </div>`;
+  }).join('');
+}
+
+// HISTORY
+async function loadHistory() {
+  const resp = await fetch('/history');
+  const history = await resp.json();
+  const list = document.getElementById('historyList');
+  if (!history.length) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px">Aucune analyse enregistrée</p>';
+    return;
+  }
+  list.innerHTML = history.map(h => {
+    const s = h.global_score || 0;
+    const color = s >= 75 ? 'var(--ok)' : s >= 50 ? 'var(--warn)' : 'var(--err)';
+    const vClass = (h.verdict||'').includes('PRÊT') ? 'ok' : (h.verdict||'').includes('RETRAVAILLER') ? 'warn' : 'err';
+    const vBg = vClass === 'ok' ? 'var(--ok)' : vClass === 'warn' ? 'var(--warn)' : 'var(--err)';
+    const vColor = vClass === 'warn' ? '#000' : '#fff';
+    return `
+      <div class="history-item">
+        <div class="history-score" style="background:${color}22;color:${color}">${s}</div>
+        <div class="history-info">
+          <div class="history-filename">${h.filename || 'slide'}</div>
+          <div class="history-meta">${h.timestamp || ''}</div>
+        </div>
+        <div class="history-verdict" style="background:${vBg};color:${vColor}">${h.verdict || ''}</div>
+      </div>`;
+  }).join('');
+}
+
+// TABS
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const tabs = ['dimensions','reformulation','templates','history'];
+    b.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'templates' && !allTemplates.length) loadAndRenderTemplates([]);
+  if (name === 'history') loadHistory();
+}
+
+// Init: preload templates
+loadAndRenderTemplates([]);
+</script>
+</body>
+</html>

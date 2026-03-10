@@ -1,0 +1,86 @@
+{
+  "expectations": [
+    {
+      "text": "Le score global est compris entre 35 et 65 sur 100",
+      "passed": false,
+      "evidence": "Score total affiché : 26/100 (Structure 32, Design 25, Impact 20, Message 28). En dessous de la borne basse de 35 — la skill est calibrée plus sévèrement qu'attendu."
+    },
+    {
+      "text": "La review critique le titre comme étant un titre-sujet (topic title) et non un titre-action",
+      "passed": true,
+      "evidence": "\"Le titre 'Analyse des coûts opérationnels' est un titre-sujet, pas un titre-action. Il dit de quoi parle la slide, pas ce qu'on doit en conclure.\""
+    },
+    {
+      "text": "La review mentionne le trop grand nombre de bullets (6) ou la règle des 3 bullets max",
+      "passed": true,
+      "evidence": "\"Six bullets de densité quasi-identique sur fond blanc sans aucun élément graphique : il n'y a aucune hiérarchie visuelle.\" Mentionne également que la slide \"essaie de couvrir simultanément\" trop de sujets."
+    },
+    {
+      "text": "Un titre alternatif sous forme de phrase complète avec une conclusion est proposé",
+      "passed": true,
+      "evidence": "Titre proposé : \"La hausse de 23% des coûts est portée par la logistique et les RH — une réduction de 8–12% est atteignable d'ici fin d'année.\" Phrase complète avec conclusion et chiffres."
+    },
+    {
+      "text": "La review utilise les 4 sections structurées : Structure du message, Design visuel, Impact & lisibilité, Suggestions de reformulation",
+      "passed": true,
+      "evidence": "Les 4 sections sont présentes avec leurs intitulés exacts et leurs scores respectifs."
+    },
+    {
+      "text": "Un tableau Score global est présent dans l'output",
+      "passed": true,
+      "evidence": "Tableau markdown présent avec les 4 dimensions et le TOTAL de 26/100."
+    },
+    {
+      "text": "Le verdict est À RETRAVAILLER ou REFAIRE (pas PRÊT POUR LE CLIENT)",
+      "passed": true,
+      "evidence": "Verdict : \"[A RETRAVAILLER]\" en tête de review."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "total": 7,
+    "pass_rate": 0.857
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 4,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 3421,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 107.0,
+    "total_duration_seconds": 107.0
+  },
+  "claims": [
+    {
+      "claim": "La skill applique la Pyramid Principle (titre-action vs titre-sujet)",
+      "type": "process",
+      "verified": true,
+      "evidence": "Critique explicite du titre-sujet et proposition d'un titre-action."
+    },
+    {
+      "claim": "La skill applique les attributs pré-attentifs (Gestalt/similarité)",
+      "type": "process",
+      "verified": true,
+      "evidence": "\"Selon le principe de similarité (Gestalt), les six bullets ont le même traitement visuel, ce qui implique qu'ils ont tous la même importance\""
+    },
+    {
+      "claim": "La skill applique le test des 5 secondes",
+      "type": "process",
+      "verified": true,
+      "evidence": "Section 3 dédiée avec un résultat explicit du test : un dirigeant \"ne sait pas si c'est bon ou mauvais, urgent ou informatif\"."
+    }
+  ],
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Le score global est compris entre 35 et 65 sur 100",
+        "reason": "La skill score à 26/100 — en dessous de la borne. La calibration est plus sévère qu'anticipé pour une slide médiocre mais pas catastrophique. Envisager d'élargir la borne basse à 20 ou d'ajuster le prompt pour calibrer différemment."
+      }
+    ],
+    "overall": "La skill produit une review de qualité supérieure avec tous les frameworks attendus. Seul l'écart de calibration mérite attention."
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "skill_name": "slide-reviewer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Voici ma slide pour une présentation client lundi matin. Peux-tu me dire si elle est bonne ?\n\nTitre : 'Analyse des coûts opérationnels'\n\nCorps de la slide (6 bullets) :\n- Les coûts ont augmenté de 23% sur 18 mois\n- Principaux postes : logistique (40%), RH (35%), IT (25%)\n- La logistique est impactée par la hausse des carburants\n- Les RH voient leurs charges sociales augmenter suite aux nouvelles réglementations\n- L'IT présente une anomalie sur le datacenter de Lyon\n- Des pistes d'optimisation existent dans plusieurs domaines\n\nLa slide a un fond blanc, du texte en noir, et un logo client en haut à droite. Pas de graphique.",
+      "expected_output": "A structured review with 4 scored dimensions, identifying the topic-title issue (should be an action title), the excessive number of bullets with low-density conclusions, the absence of visual hierarchy, and a reformulated action title that makes a clear claim. Score should be in the 40-60/100 range. Verdict: À RETRAVAILLER.",
+      "files": [],
+      "expectations": [
+        "Score global is between 35 and 65 out of 100",
+        "Critiques the title 'Analyse des coûts opérationnels' as a topic title (titre-sujet), not an action title",
+        "Mentions that 6 bullets is too many and violates the 3x3 rule",
+        "Proposes a concrete reformulated action title as a full sentence with a claim",
+        "Output uses the exact 4-section structure: Structure du message, Design visuel, Impact & lisibilité, Suggestions de reformulation",
+        "Includes a Score global table",
+        "Verdict is À RETRAVAILLER or REFAIRE"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Can you review this slide before I send the deck to the CFO?\n\nTitle: 'Reducing warehouse costs by 18% is achievable by Q4 through 3 targeted actions'\n\nBody:\n- Renegotiate carrier contracts → saves €2.1M (implement in 6 weeks)\n- Automate receiving dock → saves €0.9M (pilot in Lyon, 3 months)\n- Consolidate SKUs below 2% velocity → saves €0.4M (immediate)\n\nTotal savings: €3.4M. Investment required: €0.6M. Net benefit: €2.8M.\n\nVisual: clean white background, one horizontal bar chart showing current vs. projected costs, three action bullets on the right side. Company colors (dark blue + orange accent). Font is consistent. Generous whitespace.",
+      "expected_output": "A mostly positive review recognizing the strong action title, clear BLUF structure, appropriate number of bullets with quantified impact, and clean visual design. Score should be 78-90/100. Verdict: PRÊT POUR LE CLIENT or minor fixes needed.",
+      "files": [],
+      "expectations": [
+        "Score global is between 72 and 95 out of 100",
+        "Recognizes the title as a strong action title with a clear claim",
+        "Acknowledges the quantified bullets as a strength",
+        "Verdict is PRÊT POUR LE CLIENT or À RETRAVAILLER with only minor issues",
+        "Output uses the exact 4-section structure with scores",
+        "Mentions the 5-second test result positively"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "J'ai préparé cette slide pour présenter nos recommandations stratégiques au COMEX. Tu penses qu'elle passe ?\n\nTitre : 'Recommandations stratégiques 2025'\n\nSous-titre : 'Synthèse des travaux du groupe de travail transversal sur la transformation digitale et l'optimisation des processus opérationnels dans un contexte de marché en mutation'\n\nCorps (texte dense, pas de bullets, 3 paragraphes) :\n'Au regard des analyses menées au cours des dernières semaines, il apparaît que la situation actuelle de l'entreprise nécessite une attention particulière sur plusieurs dimensions clés de son modèle opérationnel. Les équipes ont identifié un ensemble de leviers susceptibles d'améliorer la performance globale...'\n\n[paragraphe 2 - 4 lignes sur le digital]\n[paragraphe 3 - 3 lignes sur les RH]\n\nVisuel : fond gris foncé, texte blanc, une image de stock (open space moderne) prenant 40% de la slide à gauche. Pas de données chiffrées.",
+      "expected_output": "A severe review. The subtitle is excessively long and kills impact. The body is prose paragraphs with no structure — violates every consulting norm. The stock image adds no information. No quantified data. Score 20-40/100. Verdict: REFAIRE.",
+      "files": [],
+      "expectations": [
+        "Score global is between 15 and 45 out of 100",
+        "Specifically calls out the excessively long subtitle as a critical problem",
+        "Criticizes the use of prose paragraphs instead of structured bullets",
+        "Notes the absence of any quantified data or conclusions",
+        "Calls out the decorative stock image as adding no information value (data-ink ratio)",
+        "Verdict is REFAIRE",
+        "Provides a concrete reformulated action title",
+        "Recommends removing the stock image and the long subtitle"
+      ]
+    }
+  ]
+}

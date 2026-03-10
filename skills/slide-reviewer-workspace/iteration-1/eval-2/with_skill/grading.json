@@ -1,0 +1,75 @@
+{
+  "expectations": [
+    {
+      "text": "Le score global est supérieur à 70 sur 100",
+      "passed": true,
+      "evidence": "Score total : 74/100 (Structure 74, Design 78, Impact 71, Message 74). Supérieur à 70."
+    },
+    {
+      "text": "La review reconnaît le titre comme un titre-action fort avec une conclusion claire",
+      "passed": true,
+      "evidence": "\"The title is a genuine action title — it states a claim ('18% is achievable by Q4'), not a topic label. Correct McKinsey-style construction.\""
+    },
+    {
+      "text": "Les bullets quantifiés (€2.1M, €0.9M, €0.4M) sont mentionnés positivement",
+      "passed": true,
+      "evidence": "\"The three bullets follow a consistent logic: action → financial outcome → timeline. Parallel structure, respects the 3x3 rule.\" Les montants €2.1M, €0.9M, €0.4M sont référencés et leur cohérence arithmétique validée."
+    },
+    {
+      "text": "Le verdict est PRÊT POUR LE CLIENT ou À RETRAVAILLER avec seulement des remarques mineures",
+      "passed": false,
+      "evidence": "Verdict : \"À RETRAVAILLER\". Les problèmes soulevés ne sont pas tous mineurs : le ROI enterré dans le corps (problème de message structurel), la tension visuelle chart/bullets, le vocabulaire \"SKU velocity\" inadapté au CFO. La skill est légèrement trop sévère pour une slide qui est objectivement bonne."
+    },
+    {
+      "text": "La review utilise les 4 sections structurées",
+      "passed": true,
+      "evidence": "Les 4 sections sont présentes avec leurs scores respectifs."
+    },
+    {
+      "text": "Le test des 5 secondes est mentionné positivement",
+      "passed": true,
+      "evidence": "\"the title passes the basic action-title test: claim + deadline + implies a path.\" Mentionne ce qui est compris en 5 secondes, et pointe ce qui manque (ROI absolu)."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "total": 6,
+    "pass_rate": 0.833
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 5,
+    "total_steps": 3,
+    "errors_encountered": 0,
+    "output_chars": 3180,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 165.9,
+    "total_duration_seconds": 165.9
+  },
+  "claims": [
+    {
+      "claim": "La skill identifie correctement la hiérarchie financière des 3 actions",
+      "type": "quality",
+      "verified": true,
+      "evidence": "\"carrier renegotiation (€2.1M, 66% of savings) vs. SKU consolidation (€0.4M, 12%)\" — calcul correct et pertinent."
+    },
+    {
+      "claim": "La skill propose un titre amélioré plus court et orienté ROI",
+      "type": "quality",
+      "verified": true,
+      "evidence": "\"Three warehouse actions deliver €2.8M net savings by Q4 — at 4.7x ROI\" — 9 mots vs 14 dans le titre original, met le ROI en avant."
+    }
+  ],
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Le verdict est PRÊT POUR LE CLIENT ou À RETRAVAILLER avec seulement des remarques mineures",
+        "reason": "La skill donne À RETRAVAILLER avec des remarques substantielles sur une bonne slide. Considérer d'ajouter un 3ème niveau de verdict ('PRESQUE PRÊT — retouches mineures') ou d'ajuster le prompt pour différencier entre 70-80/100 et <70/100."
+      }
+    ],
+    "overall": "Review de haute qualité avec des insights fins sur le ROI et la hiérarchie visuelle. Calibration légèrement trop sévère pour une bonne slide."
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "eval_id": 3,
+  "eval_name": "slide-catastrophe-prose-comex",
+  "prompt": "Slide COMEX avec sous-titre fleuve, prose sans structure, image stock décorative, aucune donnée chiffrée",
+  "assertions": [
+    "Le score global est inférieur à 45 sur 100",
+    "La review critique explicitement le sous-titre trop long comme un problème majeur",
+    "La review critique l'utilisation de paragraphes en prose au lieu de bullets structurés",
+    "L'absence de données chiffrées est mentionnée comme une faiblesse",
+    "L'image stock décorative est critiquée (data-ink ratio ou élément sans valeur informative)",
+    "Le verdict est REFAIRE",
+    "Un titre-action reformulé concret est proposé",
+    "La suppression du sous-titre ou de l'image est recommandée"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "expectations": [
+    {
+      "text": "Le score global est supérieur à 70 sur 100",
+      "passed": false,
+      "evidence": "Aucun score numérique donné. La review dit \"approximately 85% ready\" mais pas de score structuré sur 100."
+    },
+    {
+      "text": "La review reconnaît le titre comme un titre-action fort avec une conclusion claire",
+      "passed": true,
+      "evidence": "\"The title is specific, quantified (18%), time-bound (Q4), and action-oriented. A CFO will immediately understand what the slide is about.\""
+    },
+    {
+      "text": "Les bullets quantifiés (€2.1M, €0.9M, €0.4M) sont mentionnés positivement",
+      "passed": true,
+      "evidence": "Chaque bullet est analysé individuellement avec les montants. €2.1M qualifié de \"largest savings lever at 62% of total\"."
+    },
+    {
+      "text": "Le verdict est PRÊT POUR LE CLIENT ou À RETRAVAILLER avec seulement des remarques mineures",
+      "passed": true,
+      "evidence": "\"The slide is approximately 85% ready.\" avec seulement 2 points d'amélioration (horizon temporel des savings, note de support pour le €2.1M). Verdict implicitement positif."
+    },
+    {
+      "text": "La review utilise les 4 sections structurées",
+      "passed": false,
+      "evidence": "Structure ad hoc : Title, Body bullets, Financial Summary, Visual Design, CFO-Readiness Checklist. Les 4 sections du framework slide-reviewer sont absentes."
+    },
+    {
+      "text": "Le test des 5 secondes est mentionné positivement",
+      "passed": false,
+      "evidence": "Aucun test des 5 secondes réalisé. La revue analyse en détail chaque bullet sans simuler la lecture rapide d'un exécutif."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 3,
+    "total": 6,
+    "pass_rate": 0.500
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 2,
+    "total_steps": 2,
+    "errors_encountered": 0,
+    "output_chars": 2480,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 63.4,
+    "total_duration_seconds": 63.4
+  },
+  "claims": [],
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "Review pertinente mais non structurée. La CFO-Readiness Checklist est un ajout intéressant mais improvise — montre la valeur d'un framework prédéfini."
+  }
+}

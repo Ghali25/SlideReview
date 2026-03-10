@@ -1,0 +1,67 @@
+{
+  "expectations": [
+    {
+      "text": "Le score global est inférieur à 45 sur 100",
+      "passed": false,
+      "evidence": "Aucun score numérique. La review dit \"ne passe pas\" mais ne produit pas de score chiffré permettant de vérifier l'assertion."
+    },
+    {
+      "text": "La review critique explicitement le sous-titre trop long comme un problème majeur",
+      "passed": true,
+      "evidence": "\"C'est le premier problème majeur... Le sous-titre... beaucoup trop long et trop chargé en jargon.\""
+    },
+    {
+      "text": "La review critique l'utilisation de paragraphes en prose au lieu de bullets structurés",
+      "passed": true,
+      "evidence": "\"C'est le problème central. Un texte dense, sans bullets, en 3 paragraphes sur une slide COMEX est une erreur de format grave.\""
+    },
+    {
+      "text": "L'absence de données chiffrées est mentionnée comme une faiblesse",
+      "passed": true,
+      "evidence": "\"L'absence totale de chiffres est un signal d'alarme. Quelle est l'ampleur du problème ? Quel est le ROI attendu ?\""
+    },
+    {
+      "text": "L'image stock décorative est critiquée (data-ink ratio ou élément sans valeur informative)",
+      "passed": true,
+      "evidence": "\"Image stock... contre-productif. Une image générique n'apporte aucune information stratégique.\" Concept de data-ink non nommé mais capturé."
+    },
+    {
+      "text": "Le verdict est REFAIRE",
+      "passed": false,
+      "evidence": "Verdict implicite (\"ne passe pas pour un COMEX\") mais aucun label structuré REFAIRE/À RETRAVAILLER/PRÊT."
+    },
+    {
+      "text": "Un titre-action reformulé concret est proposé",
+      "passed": false,
+      "evidence": "Aucun titre alternatif proposé. La review recommande de \"raccourcir le sous-titre\" mais ne reformule pas le titre principal en titre-action."
+    },
+    {
+      "text": "La suppression du sous-titre ou de l'image est recommandée",
+      "passed": true,
+      "evidence": "\"Remplacer l'image par un schéma synthétique... Sinon, supprimer\" et \"'Synthèse des recommandations — T1 2025' suffit\" pour le sous-titre."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 3,
+    "total": 8,
+    "pass_rate": 0.625
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 2,
+    "total_steps": 2,
+    "errors_encountered": 0,
+    "output_chars": 2340,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 60.5,
+    "total_duration_seconds": 60.5
+  },
+  "claims": [],
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "La review sans skill identifie les problèmes principaux mais manque de structure, de score numérique, de titre reformulé et de verdict explicite — exactement ce que le skill apporte."
+  }
+}

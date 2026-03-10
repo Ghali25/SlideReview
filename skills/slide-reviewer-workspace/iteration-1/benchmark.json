@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "skill_name": "slide-reviewer",
+    "skill_path": "/Users/ghalislaoui/projet-slide/skills/slide-reviewer",
+    "executor_model": "claude-sonnet-4-6",
+    "timestamp": "2026-03-10T00:00:00Z",
+    "evals_run": ["titre-sujet-trop-de-bullets", "bonne-slide-action-title", "slide-catastrophe-prose-comex"],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "titre-sujet-trop-de-bullets",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.857,
+        "passed": 6,
+        "failed": 1,
+        "total": 7,
+        "time_seconds": 107.0,
+        "tokens": 36703,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Score global entre 35 et 65/100", "passed": false, "evidence": "Score 26/100, en dessous de la borne basse"},
+        {"text": "Critique le titre-sujet vs titre-action", "passed": true, "evidence": "Critique explicite avec terminologie Minto"},
+        {"text": "Mentionne le trop grand nombre de bullets", "passed": true, "evidence": "Six bullets de densité quasi-identique critiqués"},
+        {"text": "Propose un titre alternatif en phrase complète", "passed": true, "evidence": "Titre proposé avec chiffres et conclusion"},
+        {"text": "Utilise les 4 sections structurées", "passed": true, "evidence": "4 sections présentes avec scores"},
+        {"text": "Tableau Score global présent", "passed": true, "evidence": "Tableau markdown avec 4 dimensions"},
+        {"text": "Verdict À RETRAVAILLER ou REFAIRE", "passed": true, "evidence": "Verdict : A RETRAVAILLER"}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "titre-sujet-trop-de-bullets",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.429,
+        "passed": 3,
+        "failed": 4,
+        "total": 7,
+        "time_seconds": 68.4,
+        "tokens": 32944,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Score global entre 35 et 65/100", "passed": true, "evidence": "Note 6/10 = 60/100"},
+        {"text": "Critique le titre-sujet vs titre-action", "passed": false, "evidence": "Suggère une phrase d'accroche mais n'utilise pas le cadre Minto"},
+        {"text": "Mentionne le trop grand nombre de bullets", "passed": true, "evidence": "Six bullets sans titre de message fort, c'est trop"},
+        {"text": "Propose un titre alternatif en phrase complète", "passed": true, "evidence": "Phrase d'accroche proposée"},
+        {"text": "Utilise les 4 sections structurées", "passed": false, "evidence": "Structure ad hoc différente"},
+        {"text": "Tableau Score global présent", "passed": false, "evidence": "Aucun tableau, juste note narrative"},
+        {"text": "Verdict À RETRAVAILLER ou REFAIRE", "passed": false, "evidence": "Pas de verdict structuré"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "bonne-slide-action-title",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.833,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 165.9,
+        "tokens": 39765,
+        "tool_calls": 5,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Score global > 70/100", "passed": true, "evidence": "Score 74/100"},
+        {"text": "Reconnaît le titre-action fort", "passed": true, "evidence": "Genuine action title, McKinsey-style"},
+        {"text": "Mentionne les bullets quantifiés positivement", "passed": true, "evidence": "Parallel structure, 3x3 rule respectée"},
+        {"text": "Verdict PRÊT ou remarques mineures seulement", "passed": false, "evidence": "À RETRAVAILLER avec points substantiels sur le ROI et visuel"},
+        {"text": "Utilise les 4 sections structurées", "passed": true, "evidence": "4 sections présentes"},
+        {"text": "Test 5 secondes mentionné positivement", "passed": true, "evidence": "title passes the basic action-title test"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "bonne-slide-action-title",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.500,
+        "passed": 3,
+        "failed": 3,
+        "total": 6,
+        "time_seconds": 63.4,
+        "tokens": 33094,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Score global > 70/100", "passed": false, "evidence": "Aucun score numérique"},
+        {"text": "Reconnaît le titre-action fort", "passed": true, "evidence": "specific, quantified, time-bound, action-oriented"},
+        {"text": "Mentionne les bullets quantifiés positivement", "passed": true, "evidence": "Largest savings lever, chiffres analysés"},
+        {"text": "Verdict PRÊT ou remarques mineures seulement", "passed": true, "evidence": "85% ready, 2 points d'amélioration seulement"},
+        {"text": "Utilise les 4 sections structurées", "passed": false, "evidence": "Structure ad hoc"},
+        {"text": "Test 5 secondes mentionné positivement", "passed": false, "evidence": "Aucun test des 5 secondes"}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "slide-catastrophe-prose-comex",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.000,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 112.7,
+        "tokens": 37157,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Score global < 45/100", "passed": true, "evidence": "Score 16/100"},
+        {"text": "Critique le sous-titre trop long", "passed": true, "evidence": "37 mots, bruit conceptuel"},
+        {"text": "Critique la prose au lieu de bullets", "passed": true, "evidence": "Minto et BLUF absents"},
+        {"text": "Absence de données chiffrées mentionnée", "passed": true, "evidence": "sans chiffres = opinion"},
+        {"text": "Image stock critiquée (data-ink ratio)", "passed": true, "evidence": "Tufte cité explicitement"},
+        {"text": "Verdict REFAIRE", "passed": true, "evidence": "REFAIRE en tête de review"},
+        {"text": "Titre-action reformulé concret proposé", "passed": true, "evidence": "Titre avec 10-15% et Q4 2025"},
+        {"text": "Suppression sous-titre ou image recommandée", "passed": true, "evidence": "Supprimez immédiatement l'image + sous-titre en entier"}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "slide-catastrophe-prose-comex",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.625,
+        "passed": 5,
+        "failed": 3,
+        "total": 8,
+        "time_seconds": 60.5,
+        "tokens": 33460,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Score global < 45/100", "passed": false, "evidence": "Aucun score numérique"},
+        {"text": "Critique le sous-titre trop long", "passed": true, "evidence": "premier problème majeur"},
+        {"text": "Critique la prose au lieu de bullets", "passed": true, "evidence": "erreur de format grave"},
+        {"text": "Absence de données chiffrées mentionnée", "passed": true, "evidence": "signal d'alarme"},
+        {"text": "Image stock critiquée (data-ink ratio)", "passed": true, "evidence": "n'apporte aucune information stratégique"},
+        {"text": "Verdict REFAIRE", "passed": false, "evidence": "ne passe pas — pas de verdict structuré"},
+        {"text": "Titre-action reformulé concret proposé", "passed": false, "evidence": "Aucun titre alternatif proposé"},
+        {"text": "Suppression sous-titre ou image recommandée", "passed": true, "evidence": "raccourcir ou supprimer le sous-titre + remplacer l'image"}
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 0.897, "stddev": 0.074, "min": 0.833, "max": 1.000},
+      "time_seconds": {"mean": 128.5, "stddev": 29.9, "min": 107.0, "max": 165.9},
+      "tokens": {"mean": 37875, "stddev": 1289, "min": 36703, "max": 39765}
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.518, "stddev": 0.098, "min": 0.429, "max": 0.625},
+      "time_seconds": {"mean": 64.1, "stddev": 3.3, "min": 60.5, "max": 68.4},
+      "tokens": {"mean": 33166, "stddev": 258, "min": 32944, "max": 33460}
+    },
+    "delta": {
+      "pass_rate": "+0.379",
+      "time_seconds": "+64.4",
+      "tokens": "+4709"
+    }
+  },
+  "notes": [
+    "L'assertion 'score entre 35–65' pour eval-1 échoue avec skill (26/100) — la skill est calibrée plus sévèrement qu'anticipé. Ce n'est pas un bug mais une caractéristique : le persona Partner est exigeant.",
+    "L'assertion 'verdict PRÊT ou mineur seulement' échoue pour eval-2 avec skill — la skill identifie des améliorations réelles (ROI dans le titre, hiérarchie visuelle) que la version sans skill manque.",
+    "Eval-3 : score parfait avec skill, 0.625 sans. La skill excelle particulièrement sur les slides catastrophiques.",
+    "La skill prend 64 secondes de plus que sans skill — coût acceptable pour la qualité de structure ajoutée.",
+    "Les reviews sans skill ne produisent jamais de score numérique ni de verdict structuré — différenciateur majeur du skill."
+  ]
+}

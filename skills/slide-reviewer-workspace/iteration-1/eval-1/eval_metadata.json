@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "titre-sujet-trop-de-bullets",
+  "prompt": "Slide avec titre-sujet 'Analyse des coûts opérationnels' et 6 bullets sans conclusion claire",
+  "assertions": [
+    "Le score global est compris entre 35 et 65 sur 100",
+    "La review critique le titre comme étant un titre-sujet (topic title) et non un titre-action",
+    "La review mentionne le trop grand nombre de bullets (6) ou la règle des 3 bullets max",
+    "Un titre alternatif sous forme de phrase complète avec une conclusion est proposé",
+    "La review utilise les 4 sections structurées : Structure du message, Design visuel, Impact & lisibilité, Suggestions de reformulation",
+    "Un tableau Score global est présent dans l'output",
+    "Le verdict est À RETRAVAILLER ou REFAIRE (pas PRÊT POUR LE CLIENT)"
+  ]
+}
