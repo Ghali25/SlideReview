@@ -257,8 +257,19 @@ def analyze():
         )
 
         raw = response.content[0].text.strip()
-        raw = re.sub(r'^```(?:json)?\s*', '', raw)
-        raw = re.sub(r'\s*```$', '', raw)
+
+        # Robust JSON extraction: handle markdown blocks and extra text
+        # Try to extract JSON from ```json ... ``` block first
+        json_block = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
+        if json_block:
+            raw = json_block.group(1).strip()
+        else:
+            # No code block — find the first { and last } to isolate JSON object
+            start = raw.find('{')
+            end = raw.rfind('}')
+            if start != -1 and end != -1:
+                raw = raw[start:end + 1]
+
         result = json.loads(raw)
 
         analysis = Analysis(
