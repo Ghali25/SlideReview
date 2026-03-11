@@ -4,13 +4,16 @@ import base64
 import re
 import stripe
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
+from flask_mail import Mail, Message
 from authlib.integrations.flask_client import OAuth
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from models import db, User, Analysis
 
 load_dotenv()
@@ -21,12 +24,21 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///slidereview.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Flask-Mail
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
+app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD", "")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", os.getenv("MAIL_USERNAME", "noreply@slidereview.app"))
+
 # Fix postgres:// → postgresql:// (Railway uses old format)
 if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgres://"):
     app.config["SQLALCHEMY_DATABASE_URI"] = app.config["SQLALCHEMY_DATABASE_URI"].replace("postgres://", "postgresql://", 1)
 
 db.init_app(app)
 bcrypt = Bcrypt(app)
+mail = Mail(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = None  # We handle redirects manually via JSON
@@ -34,6 +46,13 @@ login_manager.login_view = None  # We handle redirects manually via JSON
 # Create tables on first request (works with gunicorn)
 with app.app_context():
     db.create_all()
+    # Auto-promote admin user if ADMIN_EMAIL is set
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    if admin_email:
+        admin_user = User.query.filter_by(email=admin_email).first()
+        if admin_user and not admin_user.is_admin:
+            admin_user.is_admin = True
+            db.session.commit()
 
 oauth = OAuth(app)
 google = oauth.register(
@@ -52,6 +71,17 @@ STRIPE_PRICES = {
     "starter": os.getenv("STRIPE_STARTER_PRICE_ID", ""),
     "pro": os.getenv("STRIPE_PRO_PRICE_ID", ""),
 }
+
+def get_reset_serializer():
+    return URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="password-reset")
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            return jsonify({"error": "Accès refusé"}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 def price_to_plan(price_id):
     for plan, pid in STRIPE_PRICES.items():
@@ -218,6 +248,7 @@ def me():
                 "trial_count": current_user.trial_count,
                 "plan_level": current_user.plan_level,
                 "subscription_plan": current_user.subscription_plan,
+                "is_admin": current_user.is_admin,
             }
         })
     return jsonify({"authenticated": False})
@@ -346,6 +377,170 @@ def get_templates():
         {"id": "before_after", "name": "Avant / Après", "description": "Contraste visuel entre état actuel et état cible", "structure": ["Titre : ce que la transformation apporte", "Colonne Avant (état douloureux)", "Colonne Après (état cible)", "Effort / investissement requis"], "best_for": "Vendre une transformation ou un projet de changement", "icon": "✨", "color": "#14b8a6"},
     ]
     return jsonify(templates)
+
+
+# ─── FORGOT / RESET PASSWORD ─────────────────────────────────────────────────
+
+@app.route("/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    user = User.query.filter_by(email=email).first()
+    # Always return OK to avoid email enumeration
+    if user and user.password_hash:
+        token = get_reset_serializer().dumps(email)
+        base_url = request.host_url.rstrip("/")
+        reset_url = f"{base_url}/auth/reset-password?token={token}"
+        try:
+            msg = Message(
+                subject="Réinitialisation de votre mot de passe — SlideReview",
+                recipients=[email],
+                html=f"""
+                <div style="font-family:Inter,sans-serif;max-width:500px;margin:0 auto;padding:32px 24px">
+                  <h2 style="color:#1a1d23;margin-bottom:8px">SlideReview</h2>
+                  <p style="color:#6b7280;margin-bottom:24px">Réinitialisation du mot de passe</p>
+                  <p style="color:#1a1d23">Bonjour,</p>
+                  <p style="color:#1a1d23">Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous :</p>
+                  <a href="{reset_url}" style="display:inline-block;margin:24px 0;padding:12px 24px;background:#7c6af7;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+                    Réinitialiser mon mot de passe
+                  </a>
+                  <p style="color:#9ca3af;font-size:13px">Ce lien expire dans 1 heure. Si vous n'avez pas fait cette demande, ignorez cet email.</p>
+                </div>
+                """,
+            )
+            mail.send(msg)
+        except Exception as e:
+            app.logger.error(f"Mail error: {e}")
+    return jsonify({"ok": True})
+
+
+@app.route("/auth/reset-password", methods=["GET"])
+def reset_password_page():
+    return send_from_directory(".", "reset_password.html")
+
+
+@app.route("/auth/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json()
+    token = data.get("token", "")
+    password = data.get("password", "")
+    if len(password) < 6:
+        return jsonify({"error": "Mot de passe trop court (6 caractères min)"}), 400
+    try:
+        email = get_reset_serializer().loads(token, max_age=3600)
+    except SignatureExpired:
+        return jsonify({"error": "Le lien a expiré. Recommencez."}), 400
+    except BadSignature:
+        return jsonify({"error": "Lien invalide."}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Utilisateur introuvable."}), 404
+
+    user.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+    db.session.commit()
+    login_user(user, remember=True)
+    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url, "plan_level": user.plan_level, "trial_count": user.trial_count}})
+
+
+# ─── ADMIN ────────────────────────────────────────────────────────────────────
+
+@app.route("/admin")
+@login_required
+@admin_required
+def admin_panel():
+    return send_from_directory(".", "admin.html")
+
+
+@app.route("/admin/stats")
+@login_required
+@admin_required
+def admin_stats():
+    total_users = User.query.count()
+    paying_users = User.query.filter_by(subscription_status="active").count()
+    total_analyses = Analysis.query.count()
+    starter_users = User.query.filter_by(subscription_plan="starter", subscription_status="active").count()
+    pro_users = User.query.filter_by(subscription_plan="pro", subscription_status="active").count()
+    return jsonify({
+        "total_users": total_users,
+        "paying_users": paying_users,
+        "starter_users": starter_users,
+        "pro_users": pro_users,
+        "total_analyses": total_analyses,
+    })
+
+
+@app.route("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    users = User.query.order_by(User.created_at.desc()).all()
+    result = []
+    for u in users:
+        result.append({
+            "id": u.id,
+            "name": u.name,
+            "email": u.email,
+            "plan_level": u.plan_level,
+            "subscription_plan": u.subscription_plan,
+            "subscription_status": u.subscription_status,
+            "trial_count": u.trial_count,
+            "is_admin": u.is_admin,
+            "analyses_count": len(u.analyses),
+            "created_at": u.created_at.strftime("%d/%m/%Y") if u.created_at else "",
+        })
+    return jsonify(result)
+
+
+@app.route("/admin/users/<int:user_id>/plan", methods=["POST"])
+@login_required
+@admin_required
+def admin_set_plan(user_id):
+    data = request.get_json()
+    plan = data.get("plan", "free")
+    user = User.query.get_or_404(user_id)
+    if plan == "free":
+        user.subscription_plan = None
+        user.subscription_status = None
+    else:
+        user.subscription_plan = plan
+        user.subscription_status = "active"
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/users/<int:user_id>/reset-trials", methods=["POST"])
+@login_required
+@admin_required
+def admin_reset_trials(user_id):
+    user = User.query.get_or_404(user_id)
+    user.trial_count = 5
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/analyses")
+@login_required
+@admin_required
+def admin_analyses():
+    analyses = (
+        Analysis.query
+        .order_by(Analysis.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    result = []
+    for a in analyses:
+        result.append({
+            "id": a.id,
+            "filename": a.filename,
+            "verdict": a.verdict,
+            "global_score": a.global_score,
+            "slide_type": a.slide_type,
+            "timestamp": a.timestamp,
+            "user_email": a.user.email if a.user else "?",
+        })
+    return jsonify(result)
 
 
 # ─── PRICING & STRIPE ────────────────────────────────────────────────────────

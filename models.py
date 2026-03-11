@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     subscription_status = db.Column(db.String(50), nullable=True)  # 'active' | 'canceled'
     stripe_customer_id = db.Column(db.String(255), nullable=True)
     stripe_subscription_id = db.Column(db.String(255), nullable=True)
+    is_admin = db.Column(db.Boolean, default=False)
 
     analyses = db.relationship("Analysis", backref="user", lazy=True)
 
