@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import re
+import stripe
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
@@ -44,6 +45,19 @@ google = oauth.register(
 )
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICES = {
+    "starter": os.getenv("STRIPE_STARTER_PRICE_ID", ""),
+    "pro": os.getenv("STRIPE_PRO_PRICE_ID", ""),
+}
+
+def price_to_plan(price_id):
+    for plan, pid in STRIPE_PRICES.items():
+        if pid and pid == price_id:
+            return plan
+    return None
 
 SKILL_PATH = Path(__file__).parent / "skills/slide-reviewer/SKILL.md"
 
@@ -201,6 +215,9 @@ def me():
                 "name": current_user.name,
                 "email": current_user.email,
                 "avatar": current_user.avatar_url,
+                "trial_count": current_user.trial_count,
+                "plan_level": current_user.plan_level,
+                "subscription_plan": current_user.subscription_plan,
             }
         })
     return jsonify({"authenticated": False})
@@ -216,6 +233,9 @@ def index():
 @app.route("/analyze", methods=["POST"])
 @login_required
 def analyze():
+    if not current_user.can_analyze:
+        return jsonify({"error": "quota_exceeded", "upgrade_url": "/pricing"}), 402
+
     if "image" not in request.files:
         return jsonify({"error": "Aucune image fournie"}), 400
 
@@ -283,6 +303,11 @@ def analyze():
             result_json=json.dumps(result),
         )
         db.session.add(analysis)
+
+        # Decrement trial count for free users
+        if current_user.plan_level == 'free':
+            current_user.trial_count = max(0, (current_user.trial_count or 0) - 1)
+
         db.session.commit()
 
         return jsonify(result)
@@ -296,11 +321,13 @@ def analyze():
 @app.route("/history", methods=["GET"])
 @login_required
 def get_history():
+    if current_user.plan_level != 'pro':
+        return jsonify({"error": "plan_required", "required_plan": "pro"}), 402
     analyses = (
         Analysis.query
         .filter_by(user_id=current_user.id)
         .order_by(Analysis.created_at.desc())
-        .limit(20)
+        .limit(50)
         .all()
     )
     return jsonify([a.to_dict() for a in analyses])
@@ -319,6 +346,86 @@ def get_templates():
         {"id": "before_after", "name": "Avant / Après", "description": "Contraste visuel entre état actuel et état cible", "structure": ["Titre : ce que la transformation apporte", "Colonne Avant (état douloureux)", "Colonne Après (état cible)", "Effort / investissement requis"], "best_for": "Vendre une transformation ou un projet de changement", "icon": "✨", "color": "#14b8a6"},
     ]
     return jsonify(templates)
+
+
+# ─── PRICING & STRIPE ────────────────────────────────────────────────────────
+
+@app.route("/pricing")
+def pricing():
+    return send_from_directory(".", "pricing.html")
+
+
+@app.route("/subscribe/<plan>", methods=["POST"])
+@login_required
+def subscribe(plan):
+    if plan not in STRIPE_PRICES:
+        return jsonify({"error": "Plan invalide"}), 400
+    price_id = STRIPE_PRICES[plan]
+    if not price_id:
+        return jsonify({"error": "Stripe non configuré"}), 500
+
+    if not current_user.stripe_customer_id:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            name=current_user.name,
+            metadata={"user_id": current_user.id},
+        )
+        current_user.stripe_customer_id = customer.id
+        db.session.commit()
+
+    base_url = request.host_url.rstrip("/")
+    checkout = stripe.checkout.Session.create(
+        customer=current_user.stripe_customer_id,
+        payment_method_types=["card"],
+        line_items=[{"price": price_id, "quantity": 1}],
+        mode="subscription",
+        success_url=f"{base_url}/?subscribed=1",
+        cancel_url=f"{base_url}/pricing",
+    )
+    return jsonify({"url": checkout.url})
+
+
+@app.route("/subscription/portal")
+@login_required
+def subscription_portal():
+    if not current_user.stripe_customer_id:
+        return redirect("/pricing")
+    base_url = request.host_url.rstrip("/")
+    portal = stripe.billing_portal.Session.create(
+        customer=current_user.stripe_customer_id,
+        return_url=f"{base_url}/",
+    )
+    return redirect(portal.url)
+
+
+@app.route("/webhook/stripe", methods=["POST"])
+def stripe_webhook():
+    payload = request.get_data()
+    sig_header = request.headers.get("Stripe-Signature", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, stripe.error.SignatureVerificationError):
+        return jsonify({"error": "Invalid signature"}), 400
+
+    if event["type"] in ("customer.subscription.created", "customer.subscription.updated"):
+        sub = event["data"]["object"]
+        user = User.query.filter_by(stripe_customer_id=sub["customer"]).first()
+        if user:
+            price_id = sub["items"]["data"][0]["price"]["id"]
+            user.subscription_plan = price_to_plan(price_id) or user.subscription_plan
+            user.subscription_status = "active" if sub["status"] == "active" else sub["status"]
+            user.stripe_subscription_id = sub["id"]
+            db.session.commit()
+
+    elif event["type"] == "customer.subscription.deleted":
+        sub = event["data"]["object"]
+        user = User.query.filter_by(stripe_customer_id=sub["customer"]).first()
+        if user:
+            user.subscription_status = "canceled"
+            user.subscription_plan = None
+            db.session.commit()
+
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

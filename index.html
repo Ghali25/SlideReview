@@ -41,6 +41,44 @@
     background:rgba(109,40,217,0.08); border:1px solid rgba(109,40,217,0.25);
     border-radius:20px; color:#6d28d9; letter-spacing:0.5px; text-transform:uppercase;
   }
+  .plan-badge {
+    font-size:11px; font-weight:600; padding:4px 10px;
+    border-radius:20px; letter-spacing:0.5px; text-transform:uppercase;
+    cursor:pointer; text-decoration:none; display:inline-block;
+  }
+  .plan-badge.free { background:#fef3c7; border:1px solid #fcd34d; color:#92400e; }
+  .plan-badge.free.low { background:#fee2e2; border-color:#fca5a5; color:#991b1b; }
+  .plan-badge.starter { background:rgba(109,40,217,0.08); border:1px solid rgba(109,40,217,0.25); color:#6d28d9; }
+  .plan-badge.pro { background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; }
+
+  /* LOCKED TABS */
+  .tab-btn.locked { opacity:0.5; cursor:default; }
+  .tab-btn.locked::after { content:' 🔒'; font-size:10px; }
+
+  /* UPGRADE MODAL */
+  .upgrade-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .upgrade-overlay.hidden { display:none; }
+  .upgrade-modal {
+    background:#fff; border-radius:16px; padding:2rem;
+    max-width:380px; width:90%; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.15);
+  }
+  .upgrade-modal .upgrade-icon { font-size:2.5rem; margin-bottom:0.75rem; }
+  .upgrade-modal h3 { font-size:1.2rem; font-weight:700; margin-bottom:0.5rem; }
+  .upgrade-modal p { font-size:0.875rem; color:#6b7280; margin-bottom:1.5rem; line-height:1.5; }
+  .upgrade-modal .btn-upgrade {
+    display:block; width:100%; padding:0.85rem; border-radius:10px;
+    background:linear-gradient(135deg,#7c6af7,#6d28d9); color:white;
+    font-weight:600; font-size:0.95rem; text-decoration:none;
+    margin-bottom:0.75rem; cursor:pointer; border:none;
+  }
+  .upgrade-modal .btn-cancel {
+    background:none; border:none; color:#9ca3af; font-size:0.875rem;
+    cursor:pointer; padding:0.25rem;
+  }
 
   /* LAYOUT */
   .app { display:grid; grid-template-columns:420px 1fr; height:calc(100vh - 61px); }
@@ -483,6 +521,17 @@
   </div>
 </div>
 
+<!-- UPGRADE MODAL -->
+<div class="upgrade-overlay hidden" id="upgradeOverlay">
+  <div class="upgrade-modal">
+    <div class="upgrade-icon" id="upgradeIcon">🚀</div>
+    <h3 id="upgradeTitle">Passez à la vitesse supérieure</h3>
+    <p id="upgradeMessage">Vos 5 essais gratuits sont épuisés. Choisissez un forfait pour continuer.</p>
+    <a href="/pricing" class="btn-upgrade">Voir les forfaits →</a>
+    <button class="btn-cancel" onclick="document.getElementById('upgradeOverlay').classList.add('hidden')">Plus tard</button>
+  </div>
+</div>
+
 <header>
   <div class="logo">Slide<span>Review</span></div>
   <div id="headerRight">
@@ -573,9 +622,9 @@
 
         <!-- TABS -->
         <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('dimensions')">💬 Dimensions</button>
-          <button class="tab-btn" onclick="switchTab('reformulation')">✏️ Reformulation</button>
-          <button class="tab-btn" onclick="switchTab('templates')">📐 Templates</button>
+          <button class="tab-btn active" id="tabDimensions" onclick="tryTab('dimensions', 'starter')">💬 Dimensions</button>
+          <button class="tab-btn" id="tabReformulation" onclick="tryTab('reformulation', 'pro')">✏️ Reformulation</button>
+          <button class="tab-btn" id="tabTemplates" onclick="tryTab('templates', 'pro')">📐 Templates</button>
         </div>
 
         <!-- TAB: DIMENSIONS -->
@@ -614,6 +663,8 @@
 <script>
 let currentAnalysis = null;
 let allTemplates = [];
+let userPlan = 'free';
+let userTrialCount = 5;
 
 // ── FILE UPLOAD ──────────────────────────────────────────
 const fileInput = document.getElementById('fileInput');
@@ -692,13 +743,18 @@ analyzeBtn.addEventListener('click', async () => {
     return;
   }
 
+  // Check trial quota before calling API
+  if (userPlan === 'free' && userTrialCount <= 0) {
+    showUpgradeModal('quota', null);
+    return;
+  }
+
   showLoading();
 
   const formData = new FormData();
   if (fileInput.files[0]) {
     formData.append('image', fileInput.files[0]);
   } else {
-    // Convert data URL to blob
     const res = await fetch(slidePreview.src);
     const blob = await res.blob();
     formData.append('image', blob, 'slide.png');
@@ -707,9 +763,18 @@ analyzeBtn.addEventListener('click', async () => {
   try {
     const resp = await fetch('/analyze', { method: 'POST', body: formData });
     const data = await resp.json();
+    if (resp.status === 402) { showEmpty(); showUpgradeModal('quota', null); return; }
     if (data.error) { alert('Erreur : ' + data.error); showEmpty(); return; }
+
+    // Decrement trial count locally
+    if (userPlan === 'free') {
+      userTrialCount = Math.max(0, userTrialCount - 1);
+      updatePlanBadge();
+    }
+
     currentAnalysis = data;
     renderResults(data);
+    applyTabLocks();
   } catch(e) {
     alert('Erreur réseau : ' + e.message);
     showEmpty();
@@ -973,6 +1038,10 @@ async function loadHistory() {
       list.innerHTML = '<div class="history-empty"><div class="history-empty-icon">🔒</div><p>Connectez-vous pour voir votre historique.</p></div>';
       return;
     }
+    if (resp.status === 402) {
+      list.innerHTML = `<div class="history-empty"><div class="history-empty-icon">⭐</div><p>L'historique est réservé au forfait <strong>Pro</strong>.</p><a href="/pricing" style="display:inline-block;margin-top:12px;padding:8px 18px;background:#7c6af7;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Voir les forfaits →</a></div>`;
+      return;
+    }
     const history = await resp.json();
     if (!history.length) {
       list.innerHTML = '<div class="history-empty"><div class="history-empty-icon">📂</div><p>Aucune analyse enregistrée.<br>Uploadez une slide pour commencer.</p></div>';
@@ -1028,6 +1097,70 @@ function switchTab(name) {
   if (name === 'templates' && !allTemplates.length) loadAndRenderTemplates([]);
 }
 
+// Check if plan level satisfies requirement
+const PLAN_ORDER = ['free', 'starter', 'pro'];
+function planMeets(required) {
+  return PLAN_ORDER.indexOf(userPlan) >= PLAN_ORDER.indexOf(required);
+}
+
+// Try switching tab — show upgrade modal if locked
+function tryTab(name, requiredPlan) {
+  if (!planMeets(requiredPlan)) {
+    const msgs = {
+      starter: { icon: '💬', title: 'Forfait Starter requis', msg: 'Accédez aux dimensions détaillées (Structure, Design, Impact) avec le forfait Starter.' },
+      pro: { icon: '✏️', title: 'Forfait Pro requis', msg: 'Les reformulations Senior Partner et les templates de référence sont disponibles avec le forfait Pro.' },
+    };
+    const m = msgs[requiredPlan] || msgs.starter;
+    showUpgradeModal(null, m);
+    return;
+  }
+  switchTab(name);
+}
+
+// Apply lock classes to tabs based on current plan
+function applyTabLocks() {
+  const tabDim = document.getElementById('tabDimensions');
+  const tabRef = document.getElementById('tabReformulation');
+  const tabTpl = document.getElementById('tabTemplates');
+  if (tabDim) tabDim.classList.toggle('locked', !planMeets('starter'));
+  if (tabRef) tabRef.classList.toggle('locked', !planMeets('pro'));
+  if (tabTpl) tabTpl.classList.toggle('locked', !planMeets('pro'));
+}
+
+// Show/update plan badge in header
+function updatePlanBadge() {
+  const el = document.getElementById('planBadge');
+  if (!el) return;
+  if (userPlan === 'starter') {
+    el.textContent = 'Starter';
+    el.className = 'plan-badge starter';
+    el.href = '/pricing';
+  } else if (userPlan === 'pro') {
+    el.textContent = 'Pro';
+    el.className = 'plan-badge pro';
+    el.href = '/pricing';
+  } else {
+    const low = userTrialCount <= 2;
+    el.textContent = userTrialCount + ' essai' + (userTrialCount > 1 ? 's' : '') + ' restant' + (userTrialCount > 1 ? 's' : '');
+    el.className = 'plan-badge free' + (low ? ' low' : '');
+    el.href = '/pricing';
+  }
+}
+
+// Show upgrade modal
+function showUpgradeModal(type, custom) {
+  if (custom) {
+    document.getElementById('upgradeIcon').textContent = custom.icon;
+    document.getElementById('upgradeTitle').textContent = custom.title;
+    document.getElementById('upgradeMessage').textContent = custom.msg;
+  } else {
+    document.getElementById('upgradeIcon').textContent = '🚀';
+    document.getElementById('upgradeTitle').textContent = 'Essais gratuits épuisés';
+    document.getElementById('upgradeMessage').textContent = 'Vous avez utilisé vos 5 analyses gratuites. Choisissez un forfait pour continuer.';
+  }
+  document.getElementById('upgradeOverlay').classList.remove('hidden');
+}
+
 // Init: preload templates
 loadAndRenderTemplates([]);
 
@@ -1073,7 +1206,11 @@ async function doRegister() {
 
 function onAuthSuccess(user) {
   document.getElementById('authOverlay').classList.add('hidden');
+  // Store plan info globally
+  userPlan = user.plan_level || 'free';
+  userTrialCount = (user.trial_count !== undefined) ? user.trial_count : 5;
   renderUserHeader(user);
+  applyTabLocks();
 }
 
 function renderUserHeader(user) {
@@ -1086,8 +1223,10 @@ function renderUserHeader(user) {
     <div class="user-info">
       ${avatarHtml}
       <span class="user-name">${user.name || user.email}</span>
+      <a class="plan-badge free" id="planBadge" href="/pricing"></a>
       <button class="logout-btn" onclick="doLogout()">Déconnexion</button>
     </div>`;
+  updatePlanBadge();
 }
 
 async function doLogout() {

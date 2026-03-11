@@ -16,7 +16,26 @@ class User(UserMixin, db.Model):
     avatar_url = db.Column(db.String(512), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Subscription
+    trial_count = db.Column(db.Integer, default=5)
+    subscription_plan = db.Column(db.String(50), nullable=True)    # 'starter' | 'pro'
+    subscription_status = db.Column(db.String(50), nullable=True)  # 'active' | 'canceled'
+    stripe_customer_id = db.Column(db.String(255), nullable=True)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True)
+
     analyses = db.relationship("Analysis", backref="user", lazy=True)
+
+    @property
+    def can_analyze(self):
+        if self.subscription_status == 'active':
+            return True
+        return (self.trial_count or 0) > 0
+
+    @property
+    def plan_level(self):
+        if self.subscription_status == 'active':
+            return self.subscription_plan
+        return 'free'
 
 
 class Analysis(db.Model):
