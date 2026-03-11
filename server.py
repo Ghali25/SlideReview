@@ -16,6 +16,7 @@ from authlib.integrations.flask_client import OAuth
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from sqlalchemy import text
 from models import db, User, Analysis
 
 load_dotenv()
@@ -45,9 +46,50 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = None  # We handle redirects manually via JSON
 
-# Create tables on first request (works with gunicorn)
+
+def run_migrations():
+    """Ajoute les nouvelles colonnes aux tables existantes. Idempotent (safe à relancer)."""
+    is_postgres = "postgresql" in str(db.engine.url)
+
+    if is_postgres:
+        # PostgreSQL supporte ADD COLUMN IF NOT EXISTS → tout en une transaction
+        stmts = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_count INTEGER DEFAULT 5",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS thumbnail TEXT",
+        ]
+        with db.engine.connect() as conn:
+            for stmt in stmts:
+                conn.execute(text(stmt))
+            conn.commit()
+    else:
+        # SQLite : pas de IF NOT EXISTS → on catch l'erreur si la colonne existe déjà
+        stmts = [
+            "ALTER TABLE users ADD COLUMN trial_count INTEGER DEFAULT 5",
+            "ALTER TABLE users ADD COLUMN subscription_plan VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN subscription_status VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0",
+            "ALTER TABLE analyses ADD COLUMN thumbnail TEXT",
+        ]
+        for stmt in stmts:
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text(stmt))
+                    conn.commit()
+            except Exception:
+                pass  # Colonne déjà existante, on continue
+
+
+# Create tables + run migrations on startup
 with app.app_context():
-    db.create_all()
+    db.create_all()        # crée les tables manquantes
+    run_migrations()       # ajoute les colonnes manquantes aux tables existantes
     # Auto-promote admin user if ADMIN_EMAIL is set
     admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
     if admin_email:
