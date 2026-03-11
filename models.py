@@ -51,7 +51,8 @@ class Analysis(db.Model):
     slide_type = db.Column(db.String(50), nullable=True)
     scores_json = db.Column(db.Text, nullable=True)   # JSON string
     result_json = db.Column(db.Text, nullable=True)   # Full result JSON
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    thumbnail   = db.Column(db.Text, nullable=True)   # base64 JPEG data URL
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         import json
@@ -63,4 +64,11 @@ class Analysis(db.Model):
             "global_score": self.global_score,
             "slide_type": self.slide_type,
             "scores": json.loads(self.scores_json) if self.scores_json else {},
+            "thumbnail": self.thumbnail,
         }
+
+    def to_full_dict(self):
+        import json
+        d = self.to_dict()
+        d["result"] = json.loads(self.result_json) if self.result_json else {}
+        return d

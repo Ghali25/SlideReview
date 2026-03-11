@@ -385,31 +385,42 @@
   .right-view.active { display:flex; }
 
   /* HISTORY */
-  .history-list { display:flex; flex-direction:column; gap:10px; }
+  .history-list { display:flex; flex-direction:column; gap:8px; padding:16px; }
   .history-empty { text-align:center; padding:60px 20px; color:var(--muted); }
   .history-empty-icon { font-size:40px; margin-bottom:12px; }
   .history-empty p { font-size:14px; }
   .history-item {
     background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--radius); padding:16px; display:flex; align-items:center; gap:14px;
-    transition:border-color 0.15s;
+    border-radius:var(--radius); padding:12px 14px; display:flex; align-items:center; gap:12px;
+    transition:all 0.15s; cursor:pointer;
   }
-  .history-item:hover { border-color:var(--accent1); }
+  .history-item:hover { border-color:var(--accent1); background:rgba(124,106,247,0.04); transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .history-item.active { border-color:var(--accent1); background:rgba(124,106,247,0.06); }
+  .history-thumb {
+    width:52px; height:36px; border-radius:5px; overflow:hidden; flex-shrink:0;
+    background:var(--surface2); display:flex; align-items:center; justify-content:center;
+    font-size:18px; border:1px solid var(--border);
+  }
+  .history-thumb img { width:100%; height:100%; object-fit:cover; }
   .history-score {
-    width:48px; height:48px; border-radius:50%; display:flex; align-items:center;
-    justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+    width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-weight:800; font-size:13px; flex-shrink:0;
   }
   .history-info { flex:1; min-width:0; }
-  .history-filename { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .history-meta { font-size:11px; color:var(--muted); margin-top:3px; display:flex; gap:8px; align-items:center; }
+  .history-filename { font-weight:600; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-meta { font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:6px; align-items:center; }
   .history-type-badge {
-    font-size:10px; padding:2px 7px; border-radius:6px;
+    font-size:10px; padding:2px 6px; border-radius:5px;
     background:var(--surface2); color:var(--muted);
   }
   .history-verdict {
-    font-size:10px; font-weight:700; padding:4px 10px; border-radius:10px;
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:8px;
     text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0;
   }
+  .history-loading { text-align:center; padding:8px; color:var(--muted); font-size:12px; }
+  .history-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 4px; flex-shrink:0; }
+  .history-header-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
+  .history-count { font-size:11px; color:var(--muted); }
 
   /* SECTION TITLE */
   .section-title {
@@ -682,9 +693,12 @@
     </div>
 
     <!-- VIEW: HISTORIQUE -->
-    <div class="right-view" id="view-historique">
-      <div class="section-title">Mes analyses</div>
-      <div class="history-list" id="historyList">
+    <div class="right-view" id="view-historique" style="flex-direction:column;overflow:hidden;">
+      <div class="history-header">
+        <span class="history-header-title">Mes analyses</span>
+        <span class="history-count" id="historyCount"></span>
+      </div>
+      <div class="history-list" id="historyList" style="overflow-y:auto;flex:1;">
         <div class="history-empty">
           <div class="history-empty-icon">📂</div>
           <p>Aucune analyse enregistrée.<br>Uploadez une slide pour commencer.</p>
@@ -1066,9 +1080,16 @@ function renderTemplates(templates, matches) {
 }
 
 // HISTORY
+const TYPE_LABELS = {
+  recommandation:'Recommandation', etat_des_lieux:'État des lieux',
+  comparaison:'Comparaison', tendance:'Tendance', processus:'Processus',
+  kpis:'KPIs', minto:'Minto SCQA', before_after:'Avant/Après'
+};
+
 async function loadHistory() {
   const list = document.getElementById('historyList');
-  list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:20px">Chargement...</p>';
+  const countEl = document.getElementById('historyCount');
+  list.innerHTML = '<div class="history-loading">Chargement…</div>';
   try {
     const resp = await fetch('/history');
     if (resp.status === 401) {
@@ -1077,27 +1098,29 @@ async function loadHistory() {
     }
     if (resp.status === 402) {
       list.innerHTML = `<div class="history-empty"><div class="history-empty-icon">⭐</div><p>L'historique est réservé au forfait <strong>Pro</strong>.</p><a href="/pricing" style="display:inline-block;margin-top:12px;padding:8px 18px;background:#7c6af7;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Voir les forfaits →</a></div>`;
+      countEl.textContent = '';
       return;
     }
     const history = await resp.json();
     if (!history.length) {
       list.innerHTML = '<div class="history-empty"><div class="history-empty-icon">📂</div><p>Aucune analyse enregistrée.<br>Uploadez une slide pour commencer.</p></div>';
+      countEl.textContent = '';
       return;
     }
-    const typeLabels = {
-      recommandation:'Recommandation', etat_des_lieux:'État des lieux',
-      comparaison:'Comparaison', tendance:'Tendance', processus:'Processus',
-      kpis:'KPIs', minto:'Minto SCQA', before_after:'Avant/Après'
-    };
+    countEl.textContent = history.length + ' analyse' + (history.length > 1 ? 's' : '');
     list.innerHTML = history.map(h => {
       const s = h.global_score || 0;
       const color = s >= 75 ? 'var(--ok)' : s >= 50 ? 'var(--warn)' : 'var(--err)';
       const vClass = (h.verdict||'').includes('PRÊT') ? 'ok' : (h.verdict||'').includes('RETRAVAILLER') ? 'warn' : 'err';
       const vBg = vClass === 'ok' ? 'var(--ok)' : vClass === 'warn' ? 'var(--warn)' : 'var(--err)';
       const vColor = vClass === 'warn' ? '#000' : '#fff';
-      const typeLabel = typeLabels[h.slide_type] || h.slide_type || '';
+      const typeLabel = TYPE_LABELS[h.slide_type] || '';
+      const thumbHtml = h.thumbnail
+        ? `<img src="${h.thumbnail}" alt="">`
+        : '🖼️';
       return `
-        <div class="history-item">
+        <div class="history-item" id="hitem-${h.id}" onclick="loadHistoryItem(${h.id})">
+          <div class="history-thumb">${thumbHtml}</div>
           <div class="history-score" style="background:${color}22;color:${color}">${s}</div>
           <div class="history-info">
             <div class="history-filename">${h.filename || 'slide.png'}</div>
@@ -1111,6 +1134,38 @@ async function loadHistory() {
     }).join('');
   } catch(e) {
     list.innerHTML = '<p style="color:var(--err);font-size:13px;padding:20px">Erreur de chargement</p>';
+  }
+}
+
+async function loadHistoryItem(id) {
+  // Highlight active item
+  document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+  const itemEl = document.getElementById('hitem-' + id);
+  if (itemEl) itemEl.classList.add('active');
+
+  try {
+    const resp = await fetch(`/history/${id}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    // Restore slide preview with thumbnail
+    const slidePreviewEl = document.getElementById('slidePreview');
+    const slideContainerEl = document.getElementById('slideContainer');
+    if (data.thumbnail) {
+      slidePreviewEl.src = data.thumbnail;
+      slidePreviewEl.style.display = 'block';
+      slideContainerEl.querySelector('.slide-placeholder') && (slideContainerEl.querySelector('.slide-placeholder').style.display = 'none');
+    }
+
+    // Switch to analyse view and render result
+    switchRightView('analyse');
+    currentAnalysis = data.result;
+    renderResults(data.result);
+
+    // Enable analyze button
+    document.getElementById('analyzeBtn').disabled = false;
+  } catch(e) {
+    console.error('Erreur chargement analyse', e);
   }
 }
 

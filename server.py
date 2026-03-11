@@ -1,8 +1,10 @@
 import os
+import io
 import json
 import base64
 import re
 import stripe
+from PIL import Image
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
@@ -349,6 +351,17 @@ def analyze():
 
         result = json.loads(raw)
 
+        # Generate thumbnail (300px wide, JPEG quality 70)
+        thumbnail = None
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            img.thumbnail((300, 300), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG", quality=70)
+            thumbnail = "data:image/jpeg;base64," + base64.standard_b64encode(buf.getvalue()).decode()
+        except Exception:
+            pass
+
         analysis = Analysis(
             user_id=current_user.id,
             filename=image_file.filename,
@@ -358,6 +371,7 @@ def analyze():
             slide_type=result.get("slide_type"),
             scores_json=json.dumps(result.get("scores", {})),
             result_json=json.dumps(result),
+            thumbnail=thumbnail,
         )
         db.session.add(analysis)
 
@@ -388,6 +402,15 @@ def get_history():
         .all()
     )
     return jsonify([a.to_dict() for a in analyses])
+
+
+@app.route("/history/<int:analysis_id>", methods=["GET"])
+@login_required
+def get_history_item(analysis_id):
+    if current_user.plan_level != 'pro':
+        return jsonify({"error": "plan_required", "required_plan": "pro"}), 402
+    analysis = Analysis.query.filter_by(id=analysis_id, user_id=current_user.id).first_or_404()
+    return jsonify(analysis.to_full_dict())
 
 
 @app.route("/templates", methods=["GET"])
