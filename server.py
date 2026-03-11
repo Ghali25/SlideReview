@@ -489,6 +489,21 @@ def account_update_profile():
     return jsonify({"ok": True})
 
 
+@app.route("/account/avatar", methods=["POST"])
+@login_required
+def account_update_avatar():
+    data = request.get_json()
+    avatar = data.get("avatar", "")
+    if not avatar or not avatar.startswith("data:image/"):
+        return jsonify({"error": "Image invalide"}), 400
+    # Limit size: base64 of 200x200 JPEG is ~15KB, cap at 200KB
+    if len(avatar) > 200 * 1024:
+        return jsonify({"error": "Image trop lourde"}), 400
+    current_user.avatar_url = avatar
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/account/change-password", methods=["POST"])
 @login_required
 def account_change_password():
