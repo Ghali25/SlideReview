@@ -126,11 +126,17 @@ def get_system_prompt():
 
 SYSTEM_PROMPT = get_system_prompt()
 
-ANALYSIS_PROMPT = """Analyse cette slide en tant que Senior Partner de cabinet de conseil.
+ANALYSIS_PROMPT = """Analyse cette image en tant que Senior Partner de cabinet de conseil.
+
+Si l'image N'EST PAS une slide de présentation (ex : photo, logo, screenshot d'app, document Word, image aléatoire), réponds UNIQUEMENT avec ce JSON :
+{"is_slide": false, "reason": "<explication courte en français>"}
+
+Si c'est bien une slide, réponds avec le JSON complet ci-dessous (is_slide doit être true) :
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans backticks, respectant exactement ce schéma :
 
 {
+  "is_slide": true,
   "verdict": "PRÊT POUR LE CLIENT" | "À RETRAVAILLER" | "REFAIRE",
   "global_score": <entier 0-100>,
   "five_second_test": "<ce qu'un dirigeant comprend en lisant uniquement le titre pendant 5 secondes>",
@@ -362,6 +368,20 @@ def analyze():
         except Exception:
             pass
 
+        # Deduct credit regardless (API was called)
+        if current_user.plan_level == 'free':
+            current_user.trial_count = max(0, (current_user.trial_count or 0) - 1)
+            db.session.commit()
+
+        # Not a slide — return error with remaining trials info
+        if not result.get("is_slide", True):
+            reason = result.get("reason", "Cette image ne semble pas être une slide de présentation.")
+            return jsonify({
+                "error": "not_a_slide",
+                "message": reason,
+                "trial_count": current_user.trial_count,
+            }), 422
+
         analysis = Analysis(
             user_id=current_user.id,
             filename=image_file.filename,
@@ -374,11 +394,6 @@ def analyze():
             thumbnail=thumbnail,
         )
         db.session.add(analysis)
-
-        # Decrement trial count for free users
-        if current_user.plan_level == 'free':
-            current_user.trial_count = max(0, (current_user.trial_count or 0) - 1)
-
         db.session.commit()
 
         return jsonify(result)

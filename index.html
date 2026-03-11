@@ -815,6 +815,18 @@ analyzeBtn.addEventListener('click', async () => {
     const resp = await fetch('/analyze', { method: 'POST', body: formData });
     const data = await resp.json();
     if (resp.status === 402) { showEmpty(); showUpgradeModal('quota', null); return; }
+
+    // Image uploadée n'est pas une slide
+    if (resp.status === 422 && data.error === 'not_a_slide') {
+      showEmpty();
+      if (userPlan === 'free') {
+        userTrialCount = data.trial_count ?? Math.max(0, userTrialCount - 1);
+        updatePlanBadge();
+      }
+      showUpgradeModal('not_a_slide', data.message);
+      return;
+    }
+
     if (data.error) { alert('Erreur : ' + data.error); showEmpty(); return; }
 
     // Decrement trial count locally
@@ -1241,7 +1253,12 @@ function updatePlanBadge() {
 
 // Show upgrade modal
 function showUpgradeModal(type, custom) {
-  if (custom) {
+  if (type === 'not_a_slide') {
+    document.getElementById('upgradeIcon').textContent = '🖼️';
+    document.getElementById('upgradeTitle').textContent = 'Ce n\'est pas une slide';
+    const remaining = userPlan === 'free' ? ` Un crédit a été déduit (${userTrialCount} restant${userTrialCount > 1 ? 's' : ''}).` : '';
+    document.getElementById('upgradeMessage').textContent = (custom || 'Cette image ne semble pas être une slide de présentation.') + remaining;
+  } else if (custom) {
     document.getElementById('upgradeIcon').textContent = custom.icon;
     document.getElementById('upgradeTitle').textContent = custom.title;
     document.getElementById('upgradeMessage').textContent = custom.msg;
