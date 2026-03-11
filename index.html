@@ -34,11 +34,18 @@
   .logo {
     font-size:20px; font-weight:700; letter-spacing:-0.5px;
     background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    display:inline-block; transform-origin:center;
   }
   .logo span { font-weight:300; }
-  @keyframes logoSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-  .logo.spinning { animation:logoSpin 1s linear infinite; }
+
+  /* SPINNER ONGLET ANALYSE */
+  .nav-tab-spinner {
+    display:none; width:13px; height:13px; border-radius:50%;
+    border:2px solid rgba(109,40,217,0.25); border-top-color:#6d28d9;
+    vertical-align:middle; margin-right:2px; flex-shrink:0;
+  }
+  @keyframes navTabSpin { to { transform:rotate(360deg); } }
+  .nav-tab-spinner.active { display:inline-block; animation:navTabSpin 0.65s linear infinite; }
+  .nav-tab-icon.hidden { display:none; }
   .badge-partner {
     font-size:11px; font-weight:600; padding:4px 10px;
     background:rgba(109,40,217,0.08); border:1px solid rgba(109,40,217,0.25);
@@ -726,7 +733,7 @@
     <!-- TOP NAV -->
     <div class="right-nav">
       <button class="right-nav-btn active" id="navGuide" onclick="switchRightView('guide')">📖 Guide</button>
-      <button class="right-nav-btn" id="navAnalyse" onclick="switchRightView('analyse')">🔍 Analyse</button>
+      <button class="right-nav-btn" id="navAnalyse" onclick="switchRightView('analyse')"><span class="nav-tab-spinner" id="analyseSpinner"></span><span class="nav-tab-icon" id="analyseIcon">🔍</span> Analyse</button>
       <button class="right-nav-btn" id="navHistorique" onclick="switchRightView('historique')">🕐 Historique</button>
     </div>
 
@@ -1211,7 +1218,8 @@ analyzeBtn.addEventListener('click', async () => {
 
 // ── RENDER RESULTS ────────────────────────────────────────
 function renderResults(data) {
-  document.querySelector('.logo').classList.remove('spinning');
+  document.getElementById('analyseSpinner').classList.remove('active');
+  document.getElementById('analyseIcon').classList.remove('hidden');
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('loadingState').style.display = 'none';
   const rs = document.getElementById('resultsSection');
@@ -1240,7 +1248,8 @@ let _loadingInterval = null;
 
 function showLoading() {
   switchRightView('analyse');
-  document.querySelector('.logo').classList.add('spinning');
+  document.getElementById('analyseSpinner').classList.add('active');
+  document.getElementById('analyseIcon').classList.add('hidden');
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('resultsSection').style.display = 'none';
   const ls = document.getElementById('loadingState');
@@ -1280,7 +1289,8 @@ function showLoading() {
 }
 
 function showEmpty() {
-  document.querySelector('.logo').classList.remove('spinning');
+  document.getElementById('analyseSpinner').classList.remove('active');
+  document.getElementById('analyseIcon').classList.remove('hidden');
   document.getElementById('loadingState').style.display = 'none';
   document.getElementById('resultsSection').style.display = 'none';
   document.getElementById('emptyState').style.display = 'flex';
