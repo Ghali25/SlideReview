@@ -453,7 +453,7 @@
     border-bottom:1px solid var(--border);
     background:var(--surface2);
   }
-  .guide-section-icon { font-size:20px; }
+  .guide-section-icon { font-size:18px; line-height:1; flex-shrink:0; display:flex; align-items:center; width:24px; }
   .guide-section-title { font-size:14px; font-weight:700; }
   .guide-section-subtitle { font-size:12px; color:var(--muted); margin-left:auto; }
   .guide-rules { display:flex; flex-direction:column; }
@@ -714,13 +714,13 @@
 
     <!-- TOP NAV -->
     <div class="right-nav">
-      <button class="right-nav-btn active" id="navAnalyse" onclick="switchRightView('analyse')">Analyse</button>
-      <button class="right-nav-btn" id="navGuide" onclick="switchRightView('guide')">📖 Guide</button>
+      <button class="right-nav-btn active" id="navGuide" onclick="switchRightView('guide')">📖 Guide</button>
+      <button class="right-nav-btn" id="navAnalyse" onclick="switchRightView('analyse')">🔍 Analyse</button>
       <button class="right-nav-btn" id="navHistorique" onclick="switchRightView('historique')">🕐 Historique</button>
     </div>
 
     <!-- VIEW: ANALYSE -->
-    <div class="right-view active" id="view-analyse">
+    <div class="right-view" id="view-analyse">
       <div class="empty-state" id="emptyState">
         <div class="big-icon">🎯</div>
         <p>Uploadez un screenshot de votre slide et obtenez le feedback d'un Senior Partner de cabinet de conseil.</p>
@@ -798,7 +798,7 @@
     </div>
 
     <!-- VIEW: GUIDE -->
-    <div class="right-view" id="view-guide">
+    <div class="right-view active" id="view-guide">
       <div class="guide-view">
 
         <!-- INTRO -->
