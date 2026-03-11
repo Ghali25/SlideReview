@@ -428,6 +428,96 @@
     color:var(--muted); margin-bottom:12px; font-weight:600;
   }
 
+  /* GUIDE */
+  .guide-view { display:flex; flex-direction:column; gap:24px; }
+  .guide-intro {
+    background:linear-gradient(135deg,rgba(109,40,217,0.07),rgba(29,78,216,0.05));
+    border:1px solid rgba(109,40,217,0.15); border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .guide-intro-title { font-size:15px; font-weight:700; margin-bottom:6px; }
+  .guide-intro p { font-size:13px; color:var(--muted); line-height:1.6; }
+  .guide-intro .guide-refs {
+    margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .guide-ref-chip {
+    font-size:11px; padding:3px 10px; border-radius:20px;
+    background:rgba(109,40,217,0.1); color:#6d28d9; font-weight:600;
+  }
+  .guide-section {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden;
+  }
+  .guide-section-header {
+    padding:14px 18px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface2);
+  }
+  .guide-section-icon { font-size:20px; }
+  .guide-section-title { font-size:14px; font-weight:700; }
+  .guide-section-subtitle { font-size:12px; color:var(--muted); margin-left:auto; }
+  .guide-rules { display:flex; flex-direction:column; }
+  .guide-rule {
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    display:flex; gap:14px; align-items:flex-start;
+  }
+  .guide-rule:last-child { border-bottom:none; }
+  .guide-rule-num {
+    flex-shrink:0; width:24px; height:24px; border-radius:50%;
+    background:var(--surface2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:var(--muted);
+    margin-top:1px;
+  }
+  .guide-rule-body { flex:1; }
+  .guide-rule-title { font-size:13px; font-weight:600; margin-bottom:3px; }
+  .guide-rule-desc { font-size:12.5px; color:var(--muted); line-height:1.6; }
+  .guide-rule-example {
+    margin-top:8px; padding:8px 12px; border-radius:7px;
+    background:var(--surface2); border-left:3px solid var(--border);
+    font-size:12px; color:var(--muted); line-height:1.5;
+  }
+  .guide-rule-example .ex-bad {
+    color:var(--err); font-size:11px; text-transform:uppercase; font-weight:700;
+    letter-spacing:0.5px; margin-bottom:2px;
+  }
+  .guide-rule-example .ex-good {
+    color:var(--ok); font-size:11px; text-transform:uppercase; font-weight:700;
+    letter-spacing:0.5px; margin-bottom:2px; margin-top:8px;
+  }
+  .guide-rule-example span { display:block; line-height:1.5; }
+  .guide-rule-accent { color:var(--accent1); }
+  .guide-checklist {
+    padding:14px 18px; display:flex; flex-direction:column; gap:8px;
+  }
+  .guide-check-item {
+    display:flex; gap:10px; align-items:flex-start;
+    font-size:12.5px; line-height:1.5;
+  }
+  .guide-check-icon { flex-shrink:0; font-size:14px; margin-top:1px; }
+  .guide-minto {
+    padding:14px 18px; display:flex; flex-direction:column; gap:6px;
+  }
+  .guide-minto-step {
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    border-radius:8px; background:var(--surface2); border:1px solid var(--border);
+  }
+  .guide-minto-letter {
+    flex-shrink:0; width:28px; height:28px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color:#fff;
+  }
+  .guide-minto-content { flex:1; }
+  .guide-minto-label { font-size:12px; font-weight:700; }
+  .guide-minto-desc { font-size:11.5px; color:var(--muted); }
+  .guide-minto-arrow { color:var(--muted); font-size:12px; text-align:center; }
+  .guide-tip {
+    margin:0 18px 14px; padding:10px 14px; border-radius:8px;
+    background:rgba(8,145,178,0.06); border:1px solid rgba(8,145,178,0.2);
+    font-size:12px; color:#0369a1; line-height:1.5;
+  }
+  .guide-tip strong { font-weight:700; }
+
   /* SCROLLBAR */
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -625,6 +715,7 @@
     <!-- TOP NAV -->
     <div class="right-nav">
       <button class="right-nav-btn active" id="navAnalyse" onclick="switchRightView('analyse')">Analyse</button>
+      <button class="right-nav-btn" id="navGuide" onclick="switchRightView('guide')">📖 Guide</button>
       <button class="right-nav-btn" id="navHistorique" onclick="switchRightView('historique')">🕐 Historique</button>
     </div>
 
@@ -703,6 +794,269 @@
           <div class="history-empty-icon">📂</div>
           <p>Aucune analyse enregistrée.<br>Uploadez une slide pour commencer.</p>
         </div>
+      </div>
+    </div>
+
+    <!-- VIEW: GUIDE -->
+    <div class="right-view" id="view-guide">
+      <div class="guide-view">
+
+        <!-- INTRO -->
+        <div class="guide-intro">
+          <div class="guide-intro-title">📖 Standards du conseil — Slides qui convainquent</div>
+          <p>Les règles non-négociables utilisées chez McKinsey, BCG et Bain pour des slides qui passent le test Senior Partner. Pas de jargon — que du concret.</p>
+          <div class="guide-refs">
+            <span class="guide-ref-chip">Pyramide Minto</span>
+            <span class="guide-ref-chip">McKinsey Way</span>
+            <span class="guide-ref-chip">MECE</span>
+            <span class="guide-ref-chip">Test des 5 sec</span>
+          </div>
+        </div>
+
+        <!-- SECTION 1: STRUCTURE -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">🧠</span>
+            <span class="guide-section-title">Structure & Logique</span>
+            <span class="guide-section-subtitle">Le squelette de la slide</span>
+          </div>
+
+          <div class="guide-rules">
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">1</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Titre = Conclusion, pas sujet</div>
+                <div class="guide-rule-desc">Le titre doit livrer le verdict, pas décrire le contenu. Le lecteur comprend l'essentiel avant même de lire le corps de la slide.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ À éviter</div>
+                  <span>« Analyse des ventes par région Q3 »</span>
+                  <div class="ex-good">✓ À utiliser</div>
+                  <span>« Les ventes région Sud chutent de 18% — action requise dès janvier »</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">2</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">1 slide = 1 message</div>
+                <div class="guide-rule-desc">Chaque slide doit pouvoir se résumer en une phrase. Si vous avez deux messages, vous avez deux slides. Résistez à la tentation d'en mettre plus.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">3</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Pyramide Minto (SCQA)</div>
+                <div class="guide-rule-desc">Structurez votre raisonnement du général au particulier. Commencez par la réponse, puis justifiez.</div>
+                <div class="guide-minto" style="margin-top:10px;padding:0;">
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#6366f1">S</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Situation</div>
+                      <div class="guide-minto-desc">Le contexte partagé par tous — ce que tout le monde sait déjà</div>
+                    </div>
+                  </div>
+                  <div class="guide-minto-arrow">↓</div>
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#ef4444">C</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Complication</div>
+                      <div class="guide-minto-desc">Ce qui a changé ou ce qui pose problème</div>
+                    </div>
+                  </div>
+                  <div class="guide-minto-arrow">↓</div>
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#f59e0b">Q</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Question</div>
+                      <div class="guide-minto-desc">La question implicite que se pose votre audience</div>
+                    </div>
+                  </div>
+                  <div class="guide-minto-arrow">↓</div>
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#10b981">R</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Réponse</div>
+                      <div class="guide-minto-desc">Votre recommandation — c'est votre titre de slide</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">4</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">MECE : exhaustif et sans doublon</div>
+                <div class="guide-rule-desc">Vos bullets doivent couvrir le sujet sans se chevaucher (Mutually Exclusive, Collectively Exhaustive). Chaque point apporte quelque chose de distinct. Idéalement 3 bullets, jamais plus de 5.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">5</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Le test « So what ? »</div>
+                <div class="guide-rule-desc">Pour chaque donnée ou constat, posez-vous : "Et alors ?" Si vous n'avez pas de réponse, le point ne mérite pas d'être sur la slide. Une donnée brute sans conclusion est inutile.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ Donnée brute</div>
+                  <span>« Le taux de churn est de 12% »</span>
+                  <div class="ex-good">✓ Donnée + insight</div>
+                  <span>« Le taux de churn à 12% coûte 2M€/an — cibler les 3 premiers mois réduit ce risque de moitié »</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 2: DESIGN -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">🎨</span>
+            <span class="guide-section-title">Design & Lisibilité</span>
+            <span class="guide-section-subtitle">Ce que l'œil voit en premier</span>
+          </div>
+
+          <div class="guide-tip">
+            <strong>Règle d'or :</strong> Si vous devez hésiter sur la mise en page, c'est qu'il y a trop d'éléments. Un slide bien designé ne se discute pas — il s'impose.
+          </div>
+
+          <div class="guide-rules">
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">1</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Hiérarchie visuelle claire</div>
+                <div class="guide-rule-desc">L'œil doit suivre un chemin : Titre → Message clé → Détails de support. Utilisez la taille, le gras et la couleur pour guider — pas pour décorer.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">2</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Le blanc, votre meilleur allié</div>
+                <div class="guide-rule-desc">L'espace vide (whitespace) n'est pas du vide — c'est de la respiration. Les slides surchargées perdent l'attention. Occupez 60-70% de la surface maximum.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">3</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">2 couleurs + 1 accent</div>
+                <div class="guide-rule-desc">Palette recommandée : une couleur principale (titres, accents forts), une couleur neutre (corps, fond), une couleur d'alerte pour les points critiques uniquement. Plus de 3 couleurs = slide de lycéen.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">4</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Titres de graphiques = conclusions</div>
+                <div class="guide-rule-desc">Comme pour les titres de slides, les légendes de graphiques doivent livrer l'insight, pas décrire le type de graphique.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ Description</div>
+                  <span>« Évolution du CA 2022-2024 »</span>
+                  <div class="ex-good">✓ Conclusion</div>
+                  <span>« Le CA a rebondi de 22% post-restructuration, portée par le segment B2B »</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">5</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Police : lisibilité > originalité</div>
+                <div class="guide-rule-desc">Titres ≥ 24pt, corps ≥ 12pt, légendes ≥ 10pt. Police sans-serif (Inter, Calibri, Helvetica). Jamais plus de 2 polices différentes sur un deck.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 3: MESSAGE & IMPACT -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">⚡</span>
+            <span class="guide-section-title">Message & Impact</span>
+            <span class="guide-section-subtitle">Ce que votre audience retient</span>
+          </div>
+
+          <div class="guide-rules">
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">1</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Le test des 5 secondes</div>
+                <div class="guide-rule-desc">Un décideur doit comprendre le message principal de votre slide en 5 secondes, en lisant uniquement le titre. Si ce n'est pas le cas, votre titre est trop faible ou votre slide trop complexe.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">2</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Parler des enjeux client, pas de votre process</div>
+                <div class="guide-rule-desc">Votre audience se fiche de votre méthode. Elle veut savoir ce que ça change pour elle. Formulez toujours du point de vue du bénéfice client : impact €, risque évité, opportunité saisie.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ Centré process</div>
+                  <span>« Nous avons analysé 3 segments de marché via notre framework propriétaire »</span>
+                  <div class="ex-good">✓ Centré impact</div>
+                  <span>« Segment B2B représente 70% du potentiel — concentrer ici génère +4M€ sans ressource additionnelle »</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">3</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Quantifier chaque affirmation</div>
+                <div class="guide-rule-desc">« Significatif », « important », « majeur » ne veulent rien dire. Tout ce qui peut être chiffré doit l'être : montants €, %, délais, effectifs. Les chiffres créent la crédibilité et ancrent la mémoire.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">4</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Une slide = une décision possible</div>
+                <div class="guide-rule-desc">Chaque slide doit implicitement appeler à une action ou une décision. Si votre audience peut tout lire et ne rien décider, la slide n'a pas sa place dans le deck.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">5</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">La « elevator pitch » de votre slide</div>
+                <div class="guide-rule-desc">Avant de la créer, formulez votre slide en une phrase orale : "Cette slide montre que [QUOI] parce que [PREUVE], donc [ACTION]." Si vous ne pouvez pas le faire, la slide n'est pas encore prête.</div>
+                <div class="guide-rule-example">
+                  <span>« Cette slide montre que notre time-to-market a doublé (QUOI) à cause d'un process de validation à 7 étapes (PREUVE), donc il faut le réduire à 3 étapes dès Q1 (ACTION). »</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 4: CHECKLIST RAPIDE -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">✅</span>
+            <span class="guide-section-title">Checklist avant envoi</span>
+            <span class="guide-section-subtitle">30 secondes, zéro regret</span>
+          </div>
+          <div class="guide-checklist">
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Mon titre est une conclusion, pas un sujet</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>La slide a un seul message principal</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Chaque chiffre est accompagné d'un "so what"</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Mes bullets sont MECE : ≤ 5, sans doublon, sans redondance</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Test des 5 sec passé : le message est clair avec titre seul</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Pas de jargon interne ni d'acronyme non défini</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Les graphiques ont des titres-conclusions</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>La police est lisible à 1,5m de distance (≥ 12pt)</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>≤ 3 couleurs, hiérarchie visuelle respectée</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Je peux décrire cette slide en 1 phrase avec QUOI / PREUVE / ACTION</span></div>
+          </div>
+        </div>
+
       </div>
     </div>
 
