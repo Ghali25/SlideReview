@@ -167,6 +167,18 @@
   .five-sec-btn:hover { border-color:var(--accent3); color:var(--accent3); }
   .five-sec-btn:disabled { opacity:0.4; cursor:not-allowed; }
   .five-sec-hint { font-size:11px; color:var(--muted); text-align:center; margin-top:5px; }
+
+  /* CONTEXT BOX */
+  .context-box { padding:0 20px; margin-bottom:12px; }
+  .context-label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .context-label span { font-weight:400; text-transform:none; letter-spacing:0; opacity:0.8; }
+  .context-textarea {
+    width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:9px;
+    font-size:12.5px; font-family:inherit; color:var(--text); resize:none;
+    background:var(--surface); outline:none; transition:border-color 0.15s; line-height:1.5;
+  }
+  .context-textarea:focus { border-color:var(--accent1); }
+  .context-textarea::placeholder { color:#adb5bd; }
   #fiveSecResult {
     margin-top:8px; padding:10px 14px; border-radius:8px;
     background:rgba(8,145,178,0.06); border:1px solid rgba(8,145,178,0.25);
@@ -581,6 +593,16 @@
       <div id="fiveSecResult"></div>
     </div>
 
+    <div class="context-box">
+      <div class="context-label">Contexte <span>— optionnel</span></div>
+      <textarea
+        id="contextInput"
+        class="context-textarea"
+        rows="3"
+        placeholder="Ex : Slide 3/12 d'un deck de transformation digitale pour un COMEX retail. Objectif : convaincre de lancer un POC IA en 6 mois."
+      ></textarea>
+    </div>
+
     <button class="analyze-btn" id="analyzeBtn" disabled>
       Analyser la slide →
     </button>
@@ -772,6 +794,8 @@ analyzeBtn.addEventListener('click', async () => {
     const blob = await res.blob();
     formData.append('image', blob, 'slide.png');
   }
+  const context = document.getElementById('contextInput').value.trim();
+  if (context) formData.append('context', context);
 
   try {
     const resp = await fetch('/analyze', { method: 'POST', body: formData });
@@ -1260,8 +1284,10 @@ function renderUserHeader(user) {
     : '';
   el.innerHTML = `
     <div class="user-info">
-      ${avatarHtml}
-      <span class="user-name">${user.name || user.email}</span>
+      <a href="/account" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:inherit">
+        ${avatarHtml}
+        <span class="user-name">${user.name || user.email}</span>
+      </a>
       <a class="plan-badge free" id="planBadge" href="/pricing"></a>
       ${adminLink}
       <button class="logout-btn" onclick="doLogout()">Déconnexion</button>

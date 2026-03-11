@@ -92,6 +92,23 @@ def price_to_plan(price_id):
 SKILL_PATH = Path(__file__).parent / "skills/slide-reviewer/SKILL.md"
 
 
+def _repair_json(s: str) -> str:
+    """Fix common JSON issues produced by LLMs (trailing commas, truncation)."""
+    # Remove trailing commas before ] or }
+    s = re.sub(r',\s*([}\]])', r'\1', s)
+    # If JSON is truncated (no closing braces), close open structures
+    open_braces = s.count('{') - s.count('}')
+    open_brackets = s.count('[') - s.count(']')
+    if open_braces > 0 or open_brackets > 0:
+        # Truncated — close the last string/value then close structures
+        s = s.rstrip().rstrip(',')
+        # Close any unclosed string
+        if s.count('"') % 2 == 1:
+            s += '"'
+        s += ']' * open_brackets + '}' * open_braces
+    return s
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -249,6 +266,9 @@ def me():
                 "plan_level": current_user.plan_level,
                 "subscription_plan": current_user.subscription_plan,
                 "is_admin": current_user.is_admin,
+                "has_password": current_user.password_hash is not None,
+                "analyses_count": len(current_user.analyses),
+                "created_at": current_user.created_at.strftime("%d/%m/%Y") if current_user.created_at else None,
             }
         })
     return jsonify({"authenticated": False})
@@ -284,10 +304,15 @@ def analyze():
     else:
         media_type = "image/png"
 
+    context = request.form.get("context", "").strip()
+    prompt = ANALYSIS_PROMPT
+    if context:
+        prompt = f"Contexte fourni par l'utilisateur : {context}\n\n{ANALYSIS_PROMPT}"
+
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=2048,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             messages=[
                 {
@@ -301,7 +326,7 @@ def analyze():
                                 "data": image_b64,
                             },
                         },
-                        {"type": "text", "text": ANALYSIS_PROMPT},
+                        {"type": "text", "text": prompt},
                     ],
                 }
             ],
@@ -309,17 +334,18 @@ def analyze():
 
         raw = response.content[0].text.strip()
 
-        # Robust JSON extraction: handle markdown blocks and extra text
-        # Try to extract JSON from ```json ... ``` block first
+        # Extract JSON from optional markdown code block
         json_block = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
         if json_block:
             raw = json_block.group(1).strip()
         else:
-            # No code block — find the first { and last } to isolate JSON object
             start = raw.find('{')
             end = raw.rfind('}')
             if start != -1 and end != -1:
                 raw = raw[start:end + 1]
+
+        # Repair common JSON issues before parsing
+        raw = _repair_json(raw)
 
         result = json.loads(raw)
 
@@ -441,6 +467,54 @@ def reset_password():
     db.session.commit()
     login_user(user, remember=True)
     return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url, "plan_level": user.plan_level, "trial_count": user.trial_count}})
+
+
+# ─── ACCOUNT MANAGEMENT ──────────────────────────────────────────────────────
+
+@app.route("/account")
+@login_required
+def account_page():
+    return send_from_directory(".", "account.html")
+
+
+@app.route("/account/profile", methods=["POST"])
+@login_required
+def account_update_profile():
+    data = request.get_json()
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Nom invalide"}), 400
+    current_user.name = name
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/account/change-password", methods=["POST"])
+@login_required
+def account_change_password():
+    if not current_user.password_hash:
+        return jsonify({"error": "Compte Google — pas de mot de passe"}), 400
+    data = request.get_json()
+    current_pwd = data.get("current_password", "")
+    new_pwd = data.get("new_password", "")
+    if not bcrypt.check_password_hash(current_user.password_hash, current_pwd):
+        return jsonify({"error": "Mot de passe actuel incorrect"}), 401
+    if len(new_pwd) < 6:
+        return jsonify({"error": "Minimum 6 caractères"}), 400
+    current_user.password_hash = bcrypt.generate_password_hash(new_pwd).decode("utf-8")
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/account/delete", methods=["POST"])
+@login_required
+def account_delete():
+    user = current_user
+    logout_user()
+    Analysis.query.filter_by(user_id=user.id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"ok": True})
 
 
 # ─── ADMIN ────────────────────────────────────────────────────────────────────
