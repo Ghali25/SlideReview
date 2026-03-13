@@ -26,11 +26,7 @@ class User(UserMixin, db.Model):
 
     analyses = db.relationship("Analysis", backref="user", lazy=True)
 
-    @property
-    def can_analyze(self):
-        if self.subscription_status == 'active':
-            return True
-        return (self.trial_count or 0) > 0
+    STARTER_MONTHLY_LIMIT = 30
 
     @property
     def plan_level(self):
@@ -38,12 +34,61 @@ class User(UserMixin, db.Model):
             return self.subscription_plan
         return 'free'
 
+    @property
+    def monthly_analyses_count(self):
+        """Nombre d'analyses effectuées ce mois-ci (pour le plafond Starter)."""
+        now = datetime.utcnow()
+        start = datetime(now.year, now.month, 1)
+        return Analysis.query.filter(
+            Analysis.user_id == self.id,
+            Analysis.created_at >= start
+        ).count()
+
+    @property
+    def can_analyze(self):
+        level = self.plan_level
+        if level == 'pro':
+            return True
+        if level == 'starter':
+            return self.monthly_analyses_count < self.STARTER_MONTHLY_LIMIT
+        # free
+        return (self.trial_count or 0) > 0
+
+
+class Deck(db.Model):
+    __tablename__ = "decks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    filename = db.Column(db.String(255), nullable=True)
+    slides_count = db.Column(db.Integer, default=0)
+    global_score = db.Column(db.Integer, nullable=True)
+    global_verdict = db.Column(db.String(50), nullable=True)
+    summary_json = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    analyses = db.relationship("Analysis", backref="deck", lazy=True,
+                               foreign_keys="Analysis.deck_id")
+
+    def to_dict(self):
+        import json
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "slides_count": self.slides_count,
+            "global_score": self.global_score,
+            "global_verdict": self.global_verdict,
+            "summary": json.loads(self.summary_json) if self.summary_json else {},
+            "created_at": self.created_at.strftime("%d/%m/%Y %H:%M") if self.created_at else None,
+        }
+
 
 class Analysis(db.Model):
     __tablename__ = "analyses"
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    deck_id = db.Column(db.Integer, db.ForeignKey("decks.id"), nullable=True)
     filename = db.Column(db.String(255), nullable=True)
     timestamp = db.Column(db.String(50), nullable=True)
     verdict = db.Column(db.String(50), nullable=True)

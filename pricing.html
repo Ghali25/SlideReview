@@ -274,7 +274,7 @@
 <body>
 
 <header>
-  <div class="logo">Slide<span>Review</span></div>
+  <div class="logo"><img src="/static/logo.png" alt="SlideReview" style="height:32px;width:auto;display:block;"></div>
   <nav class="header-nav">
     <a href="/">← Retour à l'app</a>
   </nav>
@@ -319,9 +319,10 @@
     <div class="card-price">5€ <span>/ mois</span></div>
     <div class="card-desc">Pour les consultants qui veulent un feedback régulier sur leurs slides.</div>
     <ul class="features">
-      <li><span class="icon check">✓</span> Analyses <strong>illimitées</strong></li>
+      <li><span class="icon check">✓</span> <strong>30 slides analysées</strong> / mois</li>
       <li><span class="icon check">✓</span> Score global + Verdict</li>
       <li><span class="icon check">✓</span> Dimensions détaillées (Structure, Design, Impact)</li>
+      <li class="disabled"><span class="icon cross">✗</span> Analyse de deck PDF</li>
       <li class="disabled"><span class="icon cross">✗</span> Reformulations Senior Partner</li>
       <li class="disabled"><span class="icon cross">✗</span> Templates de référence</li>
       <li class="disabled"><span class="icon cross">✗</span> Historique des analyses</li>
@@ -335,12 +336,13 @@
   <div class="card">
     <span class="card-badge badge-pro">Complet</span>
     <div class="card-name">Pro</div>
-    <div class="card-price">10€ <span>/ mois</span></div>
+    <div class="card-price">20€ <span>/ mois</span></div>
     <div class="card-desc">Pour les consultants qui veulent se mettre au niveau Senior Partner sur chaque slide.</div>
     <ul class="features">
       <li><span class="icon check">✓</span> Analyses <strong>illimitées</strong></li>
       <li><span class="icon check">✓</span> Score global + Verdict</li>
       <li><span class="icon check">✓</span> Dimensions détaillées</li>
+      <li><span class="icon check">✓</span> Analyse de deck PDF (jusqu'à 30 slides)</li>
       <li><span class="icon check">✓</span> Reformulations Senior Partner</li>
       <li><span class="icon check">✓</span> Templates de référence</li>
       <li><span class="icon check">✓</span> Historique complet des analyses</li>
@@ -375,7 +377,7 @@
         const banner = document.getElementById('currentPlanBanner');
         banner.classList.remove('hidden');
         document.getElementById('currentPlanText').textContent =
-          `Vous êtes actuellement sur le forfait ${currentPlan === 'starter' ? 'Starter (5€/mois)' : 'Pro (10€/mois)'}.`;
+          `Vous êtes actuellement sur le forfait ${currentPlan === 'starter' ? 'Starter (5€/mois)' : 'Pro (20€/mois)'}.`;
         document.getElementById('manageLink').style.display = 'block';
       }
 

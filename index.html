@@ -31,11 +31,8 @@
     background:rgba(255,255,255,0.85); backdrop-filter:blur(12px);
     position:sticky; top:0; z-index:100;
   }
-  .logo {
-    font-size:20px; font-weight:700; letter-spacing:-0.5px;
-    background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  }
-  .logo span { font-weight:300; }
+  .logo { display:flex; align-items:center; text-decoration:none; }
+  .logo-img { height: 34px; width:auto; display:block; }
 
   /* SPINNER ONGLET ANALYSE */
   .nav-tab-spinner {
@@ -95,6 +92,7 @@
 
   /* LEFT PANEL */
   .left-panel { border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+  #analyzeSection { display:flex; flex-direction:column; }
 
   /* UPLOAD ZONE */
   .upload-zone {
@@ -136,35 +134,36 @@
 
   /* ANNOTATIONS LIST */
   .annotations-list {
-    margin-top:8px; display:none; flex-direction:column; gap:4px;
+    margin-top:8px; display:none; flex-direction:column; gap:6px;
   }
   .annotations-list.visible { display:flex; }
-  .annotation-item {
-    border-radius:8px;
-    background:var(--surface); border:1px solid var(--border);
-    overflow:hidden; cursor:pointer;
+  .annot-section {
+    border-radius:8px; padding:8px 10px;
   }
-  .annotation-item-header {
-    display:flex; align-items:center; gap:8px;
-    padding:7px 10px;
+  .annot-section.pos {
+    background:rgba(16,185,129,0.07); border:1px solid rgba(16,185,129,0.2);
   }
-  .annotation-item:hover .annotation-item-header { background:var(--surface2); }
-  .annotation-num {
-    flex-shrink:0; width:20px; height:20px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:10px; font-weight:700;
+  .annot-section.neg {
+    background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.18);
   }
-  .annotation-num.error { background:var(--err); color:#fff; }
-  .annotation-num.warning { background:var(--warn); color:#000; }
-  .annotation-num.ok { background:var(--ok); color:#fff; }
-  .annotation-item-label { font-size:12px; font-weight:600; color:var(--text); flex:1; }
-  .annotation-chevron { font-size:10px; color:var(--muted); transition:transform 0.2s; }
-  .annotation-item.open .annotation-chevron { transform:rotate(90deg); }
-  .annotation-item-detail {
-    display:none; padding:0 10px 8px 38px;
-    font-size:11px; color:var(--muted); line-height:1.5;
+  .annot-section-title {
+    font-size:11px; font-weight:700; letter-spacing:0.3px;
+    margin-bottom:5px; text-transform:uppercase;
   }
-  .annotation-item.open .annotation-item-detail { display:block; }
+  .annot-section.pos .annot-section-title { color:#059669; }
+  .annot-section.neg .annot-section-title { color:#dc2626; }
+  .annot-list {
+    list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px;
+  }
+  .annot-list li {
+    font-size:11.5px; color:var(--text); line-height:1.45;
+    padding-left:12px; position:relative;
+  }
+  .annot-list li::before {
+    position:absolute; left:0; font-weight:700;
+  }
+  .annot-section.pos .annot-list li::before { content:'✓'; color:#059669; }
+  .annot-section.neg .annot-list li::before { content:'✗'; color:#dc2626; }
 
   /* 5-SECOND TEST BUTTON */
   .five-sec-btn {
@@ -630,6 +629,48 @@
   }
   .guide-tip strong { font-weight:700; }
 
+  /* PDF PREVIEW */
+  .pdf-preview-box {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px 16px; gap:8px; color:var(--text); text-align:center;
+  }
+  .pdf-preview-icon { font-size:40px; }
+  .pdf-preview-name {
+    font-weight:600; font-size:13px; max-width:190px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .pdf-preview-info { font-size:11px; color:var(--muted); }
+  .pdf-pro-badge {
+    background:#d1fae5; border:1px solid #6ee7b7; color:#065f46;
+    font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px;
+    text-transform:uppercase; letter-spacing:0.5px;
+  }
+
+  /* DECK CHIP BAR (remplace le sélecteur déroulant) */
+  .deck-chip-bar {
+    display:flex; align-items:center; gap:6px;
+    padding:10px 16px; background:var(--surface2);
+    border-bottom:1px solid var(--border); flex-shrink:0;
+    overflow-x:auto; scrollbar-width:thin;
+  }
+  .deck-chip-bar::-webkit-scrollbar { height:4px; }
+  .deck-chip-bar::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:2px; }
+  .deck-chip-btn {
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:6px 10px; border-radius:9px; border:1.5px solid var(--border);
+    background:var(--surface); cursor:pointer; transition:all 0.15s;
+    flex-shrink:0; min-width:50px; font-family:inherit;
+  }
+  .deck-chip-btn:hover { border-color:var(--accent1); transform:translateY(-1px); }
+  .deck-chip-btn.active {
+    border-color:var(--accent1); background:rgba(109,40,217,0.08);
+    box-shadow:0 0 0 3px rgba(109,40,217,0.12);
+  }
+  .deck-chip-btn .chip-label { font-size:10px; color:var(--muted); font-weight:700; letter-spacing:0.3px; }
+  .deck-chip-btn .chip-score { font-size:14px; font-weight:800; line-height:1; }
+  .deck-chip-btn.global .chip-score { font-size:11px; font-weight:700; color:var(--accent1); }
+  .deck-chip-btn.global .chip-label { font-size:12px; }
+
   /* SCROLLBAR */
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -669,7 +710,7 @@
     background:var(--surface); border-radius:20px; padding:36px;
     width:100%; max-width:420px; box-shadow:0 24px 64px rgba(0,0,0,0.18);
   }
-  .auth-logo { font-size:22px; font-weight:700; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:6px; }
+  .auth-logo { margin-bottom:6px; display:flex; align-items:center; }
   .auth-subtitle { font-size:13px; color:var(--muted); margin-bottom:24px; }
   .auth-tabs { display:flex; gap:4px; background:var(--surface2); border-radius:10px; padding:4px; margin-bottom:24px; }
   .auth-tab {
@@ -709,7 +750,7 @@
 <!-- AUTH MODAL -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-modal">
-    <div class="auth-logo">SlideReview</div>
+    <div class="auth-logo"><img src="/static/logo.png" alt="SlideReview" style="height:28px;width:auto;"></div>
     <div class="auth-subtitle">Feedback Senior Partner AI sur vos slides</div>
 
     <div class="auth-tabs">
@@ -771,7 +812,7 @@
 </div>
 
 <header>
-  <div class="logo">Slide<span>Review</span></div>
+  <div class="logo"><img src="/static/logo.png" alt="SlideReview" class="logo-img"></div>
   <div id="headerRight">
     <div class="badge-partner">Senior Partner AI</div>
   </div>
@@ -781,18 +822,25 @@
   <!-- LEFT PANEL -->
   <div class="left-panel">
     <div class="upload-zone" id="uploadZone">
-      <input type="file" id="fileInput" accept="image/*">
-      <div class="upload-icon">🖼️</div>
-      <strong>Déposez votre slide ici</strong>
-      <p>PNG, JPG, WEBP — screenshot d'une planche</p>
+      <input type="file" id="fileInput" accept="image/*,application/pdf">
+      <div class="upload-icon" id="uploadIcon">🖼️</div>
+      <strong id="uploadTitle">Déposez votre slide ici</strong>
+      <p id="uploadSubtitle">PNG, JPG, WEBP — ou PDF (Pro) pour analyser un deck complet</p>
     </div>
 
     <div class="preview-section">
       <div class="preview-label">Aperçu</div>
       <div class="slide-container" id="slideContainer">
-        <div class="slide-placeholder">
+        <div class="slide-placeholder" id="slidePlaceholder">
           <div style="font-size:40px;margin-bottom:8px">📋</div>
           <p>Votre slide apparaîtra ici</p>
+        </div>
+        <!-- PDF preview box (shown when PDF is loaded) -->
+        <div class="pdf-preview-box" id="pdfPreviewBox" style="display:none;">
+          <div class="pdf-preview-icon">📄</div>
+          <div class="pdf-preview-name" id="pdfFileName">deck.pdf</div>
+          <div class="pdf-preview-info">PDF — Analyse du deck complet</div>
+          <span class="pdf-pro-badge">Pro</span>
         </div>
         <img id="slidePreview" alt="Slide preview">
         <button class="slide-clear-btn" id="slideClearBtn" title="Supprimer la slide">✕</button>
@@ -806,29 +854,31 @@
       <div id="fiveSecResult"></div>
     </div>
 
-    <div class="context-box">
-      <div class="context-label">Contexte <span>— optionnel</span></div>
-      <textarea
-        id="contextInput"
-        class="context-textarea"
-        rows="3"
-        placeholder="Ex : Slide 3/12 d'un deck de transformation digitale pour un COMEX retail. Objectif : convaincre de lancer un POC IA en 6 mois."
-      ></textarea>
-      <div class="level-row">
-        <span class="level-label">Niveau</span>
-        <select id="levelSelect" class="level-select" onchange="updateLevelBadge()">
-          <option value="consultant">Consultant</option>
-          <option value="manager">Manager</option>
-          <option value="principal" selected>Principal</option>
-          <option value="senior">Senior Partner</option>
-        </select>
-        <span class="level-badge principal" id="levelBadge">Équilibré</span>
+    <div id="analyzeSection">
+      <div class="context-box">
+        <div class="context-label">Contexte <span>— optionnel</span></div>
+        <textarea
+          id="contextInput"
+          class="context-textarea"
+          rows="3"
+          placeholder="Ex : Slide 3/12 d'un deck de transformation digitale pour un COMEX retail. Objectif : convaincre de lancer un POC IA en 6 mois."
+        ></textarea>
+        <div class="level-row">
+          <span class="level-label">Niveau</span>
+          <select id="levelSelect" class="level-select" onchange="updateLevelBadge()">
+            <option value="consultant">Consultant</option>
+            <option value="manager">Manager</option>
+            <option value="principal" selected>Principal</option>
+            <option value="senior">Senior Partner</option>
+          </select>
+          <span class="level-badge principal" id="levelBadge">Équilibré</span>
+        </div>
       </div>
-    </div>
 
-    <button class="analyze-btn" id="analyzeBtn" disabled>
-      Analyser la slide →
-    </button>
+      <button class="analyze-btn" id="analyzeBtn" disabled>
+        Analyser la slide →
+      </button>
+    </div>
 
     <!-- CHAT -->
     <div class="chat-box" id="chatBox" style="display:none;">
@@ -866,6 +916,12 @@
 
     <!-- VIEW: ANALYSE -->
     <div class="right-view" id="view-analyse" style="overflow:hidden; padding:0; gap:0;">
+
+      <!-- DECK CHIP BAR (hidden by default, shown after deck analysis) -->
+      <div class="deck-chip-bar" id="deckSelector" style="display:none;">
+        <!-- chips injectées dynamiquement par onDeckAnalysisComplete() -->
+      </div>
+
       <!-- RESULTS HEADER: verdict + score (hidden until analysis) -->
       <div id="resultsHeader" style="display:none; flex-direction:column; gap:16px; padding:24px 24px 0; flex-shrink:0;">
         <div class="verdict-card" id="verdictCard">
@@ -878,10 +934,12 @@
           </div>
           <div class="global-score" id="globalScore"></div>
         </div>
-        <div class="score-card">
+        <!-- Per-slide score card (hidden in deck global view) -->
+        <div class="score-card" id="scoreCardSection">
           <h3>📊 Score Card</h3>
           <div class="score-grid" id="scoreGrid"></div>
         </div>
+        <!-- deckOverview retiré : chips dans la barre du haut -->
       </div>
 
       <!-- TABS: toujours visibles -->
@@ -900,7 +958,7 @@
         </div>
         <!-- état chargement -->
         <div class="loading-state" id="loadingState">
-          <div class="loading-icon">🔍</div>
+          <div class="loading-icon" id="loadingIcon">🔍</div>
           <div>
             <div class="loading-step" id="loadingStep">Lecture de la slide...</div>
             <div class="loading-substep" id="loadingSubstep">Envoi de l'image au modèle</div>
@@ -1218,6 +1276,14 @@ let allTemplates = [];
 let userPlan = 'free';
 let userTrialCount = 5;
 
+// ── DECK STATE ────────────────────────────────────────────
+let isDeckMode = false;
+let currentPdfFile = null;
+let deckSlides = [];     // [{result:{...}, thumbnail:'data:...'}]
+let deckSummary = null;
+let currentDeckIndex = -1;
+let currentDeckId = null;
+
 // ── FILE UPLOAD ──────────────────────────────────────────
 const fileInput = document.getElementById('fileInput');
 const uploadZone = document.getElementById('uploadZone');
@@ -1232,34 +1298,84 @@ uploadZone.addEventListener('drop', e => {
   e.preventDefault();
   uploadZone.classList.remove('drag-over');
   const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) loadFile(file);
+  if (!file) return;
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    loadPdfFile(file);
+  } else if (file.type.startsWith('image/')) {
+    loadFile(file);
+  }
 });
-fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    loadPdfFile(file);
+  } else {
+    loadFile(file);
+  }
+});
+
+function loadPdfFile(file) {
+  // PDF mode: no image preview, just show PDF info card
+  isDeckMode = true;
+  currentPdfFile = file;
+
+  // Hide image preview, show PDF box
+  slidePreview.src = '';
+  slidePreview.style.display = 'none';
+  slideContainer.classList.add('has-image');
+  document.getElementById('slidePlaceholder').style.display = 'none';
+  document.getElementById('pdfPreviewBox').style.display = 'flex';
+  document.getElementById('pdfFileName').textContent = file.name;
+
+  // Disable 5-sec test (no preview)
+  fiveSecBtn.disabled = true;
+  clearAnnotations();
+  document.getElementById('fiveSecResult').style.display = 'none';
+  slidePreview.classList.remove('blurred');
+
+  // Update analyze button
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = 'Analyser le deck →';
+  document.getElementById('analyzeSection').style.display = 'block';
+}
 
 function loadFile(file) {
+  isDeckMode = false;
+  currentPdfFile = null;
+
   const reader = new FileReader();
   reader.onload = e => {
+    // Hide PDF box, show image preview
+    document.getElementById('pdfPreviewBox').style.display = 'none';
     slidePreview.src = e.target.result;
     slidePreview.style.display = 'block';
     slideContainer.classList.add('has-image');
-    slideContainer.querySelector('.slide-placeholder').style.display = 'none';
+    document.getElementById('slidePlaceholder').style.display = 'none';
     analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'Analyser la slide →';
     fiveSecBtn.disabled = false;
     clearAnnotations();
     document.getElementById('fiveSecResult').style.display = 'none';
     slidePreview.classList.remove('blurred');
+    document.getElementById('analyzeSection').style.display = 'block';
   };
   reader.readAsDataURL(file);
 }
 
 document.getElementById('slideClearBtn').addEventListener('click', () => {
+  // Reset image and PDF state
   slidePreview.src = '';
   slidePreview.style.display = 'none';
+  document.getElementById('pdfPreviewBox').style.display = 'none';
   slideContainer.classList.remove('has-image');
-  slideContainer.querySelector('.slide-placeholder').style.display = 'block';
+  document.getElementById('slidePlaceholder').style.display = 'block';
   analyzeBtn.disabled = true;
+  analyzeBtn.textContent = 'Analyser la slide →';
   fiveSecBtn.disabled = true;
   fileInput.value = '';
+  isDeckMode = false;
+  currentPdfFile = null;
   clearAnnotations();
   document.getElementById('fiveSecResult').style.display = 'none';
   showEmpty();
@@ -1290,6 +1406,14 @@ fiveSecBtn.addEventListener('click', () => {
 
 // ── ANALYZE ──────────────────────────────────────────────
 analyzeBtn.addEventListener('click', async () => {
+  if (isDeckMode) {
+    await analyzeDeck();
+  } else {
+    await analyzeSingleSlide();
+  }
+});
+
+async function analyzeSingleSlide() {
   if (!fileInput.files[0] && !slidePreview.src.startsWith('data:')) {
     alert('Veuillez d\'abord uploader une slide.');
     return;
@@ -1304,7 +1428,7 @@ analyzeBtn.addEventListener('click', async () => {
   showLoading();
 
   const formData = new FormData();
-  if (fileInput.files[0]) {
+  if (fileInput.files[0] && !fileInput.files[0].name.toLowerCase().endsWith('.pdf')) {
     formData.append('image', fileInput.files[0]);
   } else {
     const res = await fetch(slidePreview.src);
@@ -1347,7 +1471,251 @@ analyzeBtn.addEventListener('click', async () => {
     alert('Erreur réseau : ' + e.message);
     showEmpty();
   }
-});
+}
+
+// ── DECK ANALYSIS ─────────────────────────────────────────
+async function analyzeDeck() {
+  if (!currentPdfFile) { alert('Veuillez d\'abord uploader un PDF.'); return; }
+
+  if (userPlan !== 'pro') {
+    showUpgradeModal(null, {
+      icon: '📄',
+      title: 'Forfait Pro requis',
+      msg: 'L\'analyse de deck complet (PDF) est réservée aux utilisateurs Pro.',
+    });
+    return;
+  }
+
+  // Reset deck state
+  deckSlides = [];
+  deckSummary = null;
+  currentDeckIndex = -1;
+  currentDeckId = null;
+
+  showDeckLoading(0);
+
+  const formData = new FormData();
+  formData.append('pdf', currentPdfFile);
+  const context = document.getElementById('contextInput').value.trim();
+  if (context) formData.append('context', context);
+  const level = document.getElementById('levelSelect').value;
+  formData.append('level', level);
+
+  try {
+    const resp = await fetch('/analyze-deck', { method: 'POST', body: formData });
+
+    if (resp.status === 402) {
+      showEmpty();
+      showUpgradeModal(null, {
+        icon: '📄', title: 'Forfait Pro requis',
+        msg: 'L\'analyse de deck complet est réservée aux utilisateurs Pro.',
+      });
+      return;
+    }
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Erreur : ' + (err.error || 'Erreur inconnue'));
+      showEmpty();
+      return;
+    }
+
+    // Read SSE stream
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const dataStr = line.slice(6);
+        if (dataStr === '[DONE]') break;
+        try { handleDeckEvent(JSON.parse(dataStr)); } catch(e) {}
+      }
+    }
+  } catch(e) {
+    alert('Erreur réseau : ' + e.message);
+    showEmpty();
+  }
+}
+
+function handleDeckEvent(event) {
+  switch (event.type) {
+    case 'start':
+      showDeckLoading(event.total);
+      break;
+    case 'progress':
+      updateDeckProgress(event.slide, event.total, event.pct, event.message);
+      break;
+    case 'slide_done':
+      deckSlides[event.index] = { result: event.result, thumbnail: event.thumbnail };
+      break;
+    case 'summary_done':
+      deckSummary  = event.summary;
+      currentDeckId = event.deck_id;
+      onDeckAnalysisComplete();
+      break;
+    case 'error':
+      alert('Erreur analyse deck : ' + event.message);
+      showEmpty();
+      break;
+  }
+}
+
+function showDeckLoading(total) {
+  switchRightView('analyse');
+  document.getElementById('analyseSpinner').classList.add('active');
+  document.getElementById('analyseIcon').classList.add('hidden');
+  // Reset to dimensions tab
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-dimensions').classList.add('active');
+  document.getElementById('tabDimensions').classList.add('active');
+  // Show loading state
+  document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('dimensionsContainer').innerHTML = '';
+  document.getElementById('deckSelector').style.display = 'none';
+  const ls = document.getElementById('loadingState');
+  ls.style.display = 'flex';
+  ls.style.flexDirection = 'column';
+  document.getElementById('loadingIcon').textContent = '📑';
+  document.getElementById('progressFill').style.width = '5%';
+  document.getElementById('loadingStep').textContent = 'Préparation de l\'analyse du deck…';
+  document.getElementById('loadingSubstep').textContent = total ? `${total} slides détectées` : 'Conversion du PDF…';
+  document.getElementById('loadingStepsList').innerHTML = total
+    ? `<div style="font-size:12px;color:var(--muted)">📄 ${total} slides à analyser</div>` : '';
+}
+
+function updateDeckProgress(slideNum, total, pct, message) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('loadingStep').textContent = message || `Analyse slide ${slideNum}/${total}…`;
+  const done = slideNum !== null ? slideNum - 1 : total;
+  document.getElementById('loadingSubstep').textContent = `${done}/${total} slides analysées`;
+}
+
+function onDeckAnalysisComplete() {
+  document.getElementById('analyseSpinner').classList.remove('active');
+  document.getElementById('analyseIcon').classList.remove('hidden');
+
+  // Construire la barre de chips
+  const bar = document.getElementById('deckSelector');
+  bar.innerHTML = `
+    <button class="deck-chip-btn global active" id="chipGlobal" onclick="selectDeckSlide(-1)">
+      <span class="chip-label">🌐</span>
+      <span class="chip-score">Global</span>
+    </button>`;
+
+  deckSlides.forEach((slide, i) => {
+    const score   = slide.result?.global_score ?? '?';
+    const verdict = slide.result?.verdict || '';
+    const color   = typeof score === 'number'
+      ? (score >= 75 ? 'var(--ok)' : score >= 50 ? 'var(--warn)' : 'var(--err)')
+      : 'var(--muted)';
+    bar.innerHTML += `
+      <button class="deck-chip-btn" id="chipSlide${i}" onclick="selectDeckSlide(${i})">
+        <span class="chip-label">S${i + 1}</span>
+        <span class="chip-score" style="color:${color}">${score}</span>
+      </button>`;
+  });
+  bar.style.display = 'flex';
+
+  // Afficher la vue globale par défaut
+  selectDeckSlide(-1);
+}
+
+function selectDeckSlide(idx) {
+  currentDeckIndex = parseInt(idx);
+
+  // Mettre à jour le chip actif
+  document.querySelectorAll('.deck-chip-btn').forEach(b => b.classList.remove('active'));
+  const activeChip = currentDeckIndex === -1
+    ? document.getElementById('chipGlobal')
+    : document.getElementById(`chipSlide${currentDeckIndex}`);
+  if (activeChip) activeChip.classList.add('active');
+
+  if (currentDeckIndex === -1) {
+    renderDeckSummary();
+  } else {
+    const slide = deckSlides[currentDeckIndex];
+    if (slide) {
+      if (slide.thumbnail) updateSlidePreview(slide.thumbnail);
+      currentAnalysis = slide.result;
+      renderResults(slide.result);
+      applyTabLocks();
+    }
+  }
+}
+
+function updateSlidePreview(src) {
+  if (!src) return;
+  document.getElementById('pdfPreviewBox').style.display = 'none';
+  slidePreview.src = src;
+  slidePreview.style.display = 'block';
+  slideContainer.classList.add('has-image');
+  document.getElementById('slidePlaceholder').style.display = 'none';
+}
+
+function renderDeckSummary() {
+  if (!deckSummary) return;
+
+  // Show results header with deck global verdict
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('analyzeSection').style.display = 'none';
+  document.getElementById('emptyReformulation').style.display = 'flex';
+  document.getElementById('emptyTemplates').style.display   = 'flex';
+  document.getElementById('templatesSectionTitle').style.display = 'none';
+
+  const rh = document.getElementById('resultsHeader');
+  rh.style.display = 'flex';
+  rh.style.flexDirection = 'column';
+
+  // Masquer la score card individuelle (vue globale = pas de score card)
+  document.getElementById('scoreCardSection').style.display = 'none';
+
+  // Render verdict card
+  renderVerdict({ verdict: deckSummary.global_verdict, global_score: deckSummary.global_score, slide_type: null });
+
+  // Switch to dimensions tab and show deck summary content
+  switchTab('dimensions');
+  const container = document.getElementById('dimensionsContainer');
+
+  const strengths = (deckSummary.key_strengths || []).map(s => `<li>${s}</li>`).join('');
+  const issues    = (deckSummary.critical_issues || []).map(s => `<li>${s}</li>`).join('');
+  const actions   = (deckSummary.priority_actions || []).map((s, i) => `<li><strong>${i + 1}.</strong> ${s}</li>`).join('');
+
+  container.innerHTML = `
+    ${deckSummary.executive_summary ? `
+    <div class="dimension-card">
+      <div class="dim-header">
+        <span style="font-size:18px">📄</span>
+        <span class="dim-title">Synthèse exécutive</span>
+      </div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.65">${deckSummary.executive_summary}</p>
+    </div>` : ''}
+    ${strengths ? `<div class="dimension-card">
+      <div class="dim-header"><span style="font-size:18px">✅</span><span class="dim-title">Points forts du deck</span></div>
+      <ul class="dim-list pos" style="padding-left:0">${strengths}</ul>
+    </div>` : ''}
+    ${issues ? `<div class="dimension-card">
+      <div class="dim-header"><span style="font-size:18px">⚠️</span><span class="dim-title">Problèmes critiques</span></div>
+      <ul class="dim-list neg" style="padding-left:0">${issues}</ul>
+    </div>` : ''}
+    ${actions ? `<div class="dimension-card">
+      <div class="dim-header"><span style="font-size:18px">🎯</span><span class="dim-title">Actions prioritaires</span></div>
+      <ul class="dim-list" style="padding-left:0">${actions}</ul>
+    </div>` : ''}
+  `;
+
+  // Show chat
+  clearChat();
+  showChat();
+}
 
 // ── RENDER RESULTS ────────────────────────────────────────
 function renderResults(data) {
@@ -1355,14 +1723,24 @@ function renderResults(data) {
   document.getElementById('analyseIcon').classList.remove('hidden');
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('loadingState').style.display = 'none';
-  // Show results header (verdict + score card)
+
+  // Show results header (verdict + score card), make sure score card is visible
   const rh = document.getElementById('resultsHeader');
   rh.style.display = 'flex';
   rh.style.flexDirection = 'column';
+  document.getElementById('scoreCardSection').style.display = '';
+  // En mode deck : garder la barre de chips visible ; en mode single : la cacher
+  if (!isDeckMode) {
+    document.getElementById('deckSelector').style.display = 'none';
+  }
+
   // Hide empty states on all tabs
   document.getElementById('emptyReformulation').style.display = 'none';
   document.getElementById('emptyTemplates').style.display = 'none';
   document.getElementById('templatesSectionTitle').style.display = '';
+
+  // Masquer contexte + niveau pour laisser place au chat
+  document.getElementById('analyzeSection').style.display = 'none';
 
   renderVerdict(data);
   renderScoreCard(data.scores);
@@ -1411,8 +1789,10 @@ function showLoading() {
   document.getElementById('tabDimensions').classList.add('active');
   // Hide results header, empty state; show loading
   document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('deckSelector').style.display = 'none';
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('dimensionsContainer').innerHTML = '';
+  document.getElementById('loadingIcon').textContent = '🔍';
   const ls = document.getElementById('loadingState');
   ls.style.display = 'flex';
   ls.style.flexDirection = 'column';
@@ -1454,6 +1834,8 @@ function showEmpty() {
   document.getElementById('analyseIcon').classList.remove('hidden');
   document.getElementById('loadingState').style.display = 'none';
   document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('deckSelector').style.display = 'none';
+  document.getElementById('deckOverview').style.display = 'none';
   document.getElementById('dimensionsContainer').innerHTML = '';
   document.getElementById('emptyState').style.display = 'flex';
   document.getElementById('emptyReformulation').style.display = 'flex';
@@ -1462,7 +1844,9 @@ function showEmpty() {
   document.getElementById('reformulationCard').innerHTML = '';
   document.getElementById('templatesGrid').innerHTML = '';
   document.getElementById('chatBox').style.display = 'none';
+  document.getElementById('loadingIcon').textContent = '🔍';
   chatHistory = [];
+  document.getElementById('analyzeSection').style.display = 'block';
 }
 
 // VERDICT
@@ -1596,20 +1980,25 @@ function renderAnnotations(annotations) {
   if (!annotations?.length) return;
   const list = document.getElementById('annotationsList');
 
-  annotations.forEach((a, i) => {
-    const type = a.type || 'warning';
-    const item = document.createElement('div');
-    item.className = 'annotation-item';
-    item.innerHTML = `
-      <div class="annotation-item-header">
-        <div class="annotation-num ${type}">${i + 1}</div>
-        <span class="annotation-item-label">${a.label}</span>
-        <span class="annotation-chevron">▶</span>
-      </div>
-      <div class="annotation-item-detail">${a.detail}</div>`;
-    item.addEventListener('click', () => item.classList.toggle('open'));
-    list.appendChild(item);
-  });
+  const positives = annotations.filter(a => a.type === 'ok').slice(0, 3);
+  const negatives = annotations.filter(a => a.type === 'error' || a.type === 'warning').slice(0, 3);
+
+  function makeSection(items, cls) {
+    const title = cls === 'pos' ? 'Points forts' : 'Points à corriger';
+    const liItems = items.map(a => {
+      const text = a.detail ? `<strong>${a.label}</strong> — ${a.detail}` : a.label;
+      return `<li>${text}</li>`;
+    }).join('');
+    return `<div class="annot-section ${cls}">
+      <div class="annot-section-title">${title}</div>
+      <ul class="annot-list">${liItems}</ul>
+    </div>`;
+  }
+
+  let html = '';
+  if (positives.length) html += makeSection(positives, 'pos');
+  if (negatives.length) html += makeSection(negatives, 'neg');
+  list.innerHTML = html;
 
   list.classList.add('visible');
 }
@@ -1852,13 +2241,19 @@ async function loadHistoryItem(id) {
     if (!resp.ok) return;
     const data = await resp.json();
 
+    // Reset deck mode when loading a single history item
+    isDeckMode = false;
+    currentPdfFile = null;
+    document.getElementById('pdfPreviewBox').style.display = 'none';
+    document.getElementById('analyzeBtn').textContent = 'Analyser la slide →';
+
     // Restore slide preview with thumbnail
     const slidePreviewEl = document.getElementById('slidePreview');
     const slideContainerEl = document.getElementById('slideContainer');
     if (data.thumbnail) {
       slidePreviewEl.src = data.thumbnail;
       slidePreviewEl.style.display = 'block';
-      slideContainerEl.querySelector('.slide-placeholder') && (slideContainerEl.querySelector('.slide-placeholder').style.display = 'none');
+      document.getElementById('slidePlaceholder').style.display = 'none';
     }
 
     // Switch to analyse view and render result
@@ -2035,6 +2430,34 @@ function onAuthSuccess(user) {
   userTrialCount = (user.trial_count !== undefined) ? user.trial_count : 5;
   renderUserHeader(user);
   applyTabLocks();
+  autoLoadLastAnalysis();
+}
+
+async function autoLoadLastAnalysis() {
+  try {
+    const resp = await fetch('/history/last');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data.result) return;
+    currentAnalysis = data.result;
+    // Reset deck mode (history/last always returns a single slide)
+    isDeckMode = false;
+    currentPdfFile = null;
+    document.getElementById('pdfPreviewBox').style.display = 'none';
+    if (data.thumbnail) {
+      const preview = document.getElementById('slidePreview');
+      const container = document.getElementById('slideContainer');
+      preview.src = data.thumbnail;
+      preview.style.display = 'block';
+      container.classList.add('has-image');
+      document.getElementById('slidePlaceholder').style.display = 'none';
+      document.getElementById('fiveSecBtn').disabled = false;
+      document.getElementById('analyzeBtn').disabled = false;
+    }
+    switchRightView('analyse');
+    renderResults(data.result);
+    applyTabLocks();
+  } catch(e) {}
 }
 
 function renderUserHeader(user) {

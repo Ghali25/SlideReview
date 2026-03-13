@@ -4,6 +4,7 @@ import json
 import base64
 import re
 import stripe
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image
 from datetime import datetime
 from functools import wraps
@@ -17,12 +18,18 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from sqlalchemy import text
-from models import db, User, Analysis
+from models import db, User, Analysis, Deck
+
+try:
+    import fitz  # pymupdf
+    HAS_PYMUPDF = True
+except ImportError:
+    HAS_PYMUPDF = False
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max
+app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024  # 30 MB max (for PDF decks)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///slidereview.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -61,6 +68,7 @@ def run_migrations():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE",
             "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS thumbnail TEXT",
+            "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS deck_id INTEGER REFERENCES decks(id)",
         ]
         with db.engine.connect() as conn:
             for stmt in stmts:
@@ -76,6 +84,7 @@ def run_migrations():
             "ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0",
             "ALTER TABLE analyses ADD COLUMN thumbnail TEXT",
+            "ALTER TABLE analyses ADD COLUMN deck_id INTEGER REFERENCES decks(id)",
         ]
         for stmt in stmts:
             try:
@@ -315,7 +324,9 @@ def register():
     db.session.add(user)
     db.session.commit()
     login_user(user, remember=True)
-    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url}})
+    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url,
+        "plan_level": user.plan_level, "trial_count": user.trial_count,
+        "subscription_plan": user.subscription_plan, "is_admin": user.is_admin}})
 
 
 @app.route("/auth/login", methods=["POST"])
@@ -331,7 +342,9 @@ def login():
         return jsonify({"error": "Email ou mot de passe incorrect"}), 401
 
     login_user(user, remember=True)
-    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url}})
+    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url,
+        "plan_level": user.plan_level, "trial_count": user.trial_count,
+        "subscription_plan": user.subscription_plan, "is_admin": user.is_admin}})
 
 
 @app.route("/auth/logout")
@@ -386,6 +399,8 @@ def me():
                 "has_password": current_user.password_hash is not None,
                 "analyses_count": len(current_user.analyses),
                 "created_at": current_user.created_at.strftime("%d/%m/%Y") if current_user.created_at else None,
+                "monthly_analyses_count": current_user.monthly_analyses_count if current_user.plan_level == 'starter' else None,
+                "monthly_limit": current_user.STARTER_MONTHLY_LIMIT if current_user.plan_level == 'starter' else None,
             }
         })
     return jsonify({"authenticated": False})
@@ -409,71 +424,15 @@ def analyze():
 
     image_file = request.files["image"]
     image_bytes = image_file.read()
-    image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
-
-    filename = image_file.filename.lower()
-    if filename.endswith(".png"):
-        media_type = "image/png"
-    elif filename.endswith((".jpg", ".jpeg")):
-        media_type = "image/jpeg"
-    elif filename.endswith(".webp"):
-        media_type = "image/webp"
-    else:
-        media_type = "image/png"
 
     context = request.form.get("context", "").strip()
     level   = request.form.get("level", "principal").strip()
-    tone    = LEVEL_TONES.get(level, LEVEL_TONES["principal"])
 
-    prompt_parts = [f"NIVEAU D'EXIGENCE : {tone}"]
-    if context:
-        prompt_parts.append(f"Contexte fourni par l'utilisateur : {context}")
-    prompt_parts.append(ANALYSIS_PROMPT)
-    prompt = "\n\n".join(prompt_parts)
+    # Compress image before sending to Claude (speeds up upload + processing)
+    image_b64, media_type = _compress_image_for_claude(image_bytes, max_dim=1280, quality=82)
 
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {"type": "text", "text": prompt},
-                    ],
-                }
-            ],
-        )
-
-        raw = response.content[0].text.strip()
-
-        # Extract JSON from optional markdown code block
-        json_block = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
-        if json_block:
-            raw = json_block.group(1).strip()
-
-        # Find the first '{' and parse exactly one JSON object.
-        # raw_decode() stops at the end of the first valid object,
-        # ignoring any trailing text/extra objects the LLM may have added.
-        start = raw.find('{')
-        if start == -1:
-            raise ValueError("Aucun objet JSON trouvé dans la réponse du modèle.")
-        raw = _repair_json(raw[start:])
-        try:
-            result, _ = json.JSONDecoder().raw_decode(raw)
-        except json.JSONDecodeError:
-            # Last resort: strip to last '}' and try again
-            end = raw.rfind('}')
-            result = json.loads(raw[:end + 1])
+        result = _analyze_image_bytes(image_b64, media_type, context, level)
 
         # Generate thumbnail (300px wide, JPEG quality 70)
         thumbnail = None
@@ -500,47 +459,6 @@ def analyze():
                 "trial_count": current_user.trial_count,
             }), 422
 
-        # ── Score calibration per level ──────────────────────────────────────
-        # The LLM tends to cluster around 50-60 regardless of persona.
-        # We apply a (scale, offset) per level to guarantee real differentiation.
-        #   consultant : generous  → raw 55 → 67,  raw 72 → 84
-        #   manager    : balanced  → raw 55 → 60,  raw 72 → 77
-        #   principal  : baseline  → raw 55 → 55,  raw 72 → 72  (unchanged)
-        #   senior     : harsh     → raw 55 → 43,  raw 72 → 58
-        LEVEL_CALIBRATION = {
-            "consultant": (1.00,  12),
-            "manager":    (1.00,   5),
-            "principal":  (1.00,   0),
-            "senior":     (0.88,  -5),
-        }
-        scale, offset = LEVEL_CALIBRATION.get(level, (1.00, 0))
-
-        scores = result.get("scores", {})
-        if scores:
-            calibrated = {
-                k: max(0, min(100, round(v * scale + offset)))
-                for k, v in scores.items()
-            }
-            result["scores"] = calibrated
-
-            computed_score = round(
-                calibrated.get("structure", 50) * 0.30 +
-                calibrated.get("design",    50) * 0.20 +
-                calibrated.get("impact",    50) * 0.30 +
-                calibrated.get("message",   50) * 0.20
-            )
-            result["global_score"] = computed_score
-
-            # Re-derive verdict from calibrated score
-            any_very_low = any(v < 30 for v in calibrated.values())
-            any_low      = any(v < 55 for v in calibrated.values())
-            if computed_score >= 72 and not any_low:
-                result["verdict"] = "PRÊT POUR LE CLIENT"
-            elif computed_score < 45 or any_very_low:
-                result["verdict"] = "REFAIRE"
-            else:
-                result["verdict"] = "À RETRAVAILLER"
-
         analysis = Analysis(
             user_id=current_user.id,
             filename=image_file.filename,
@@ -557,8 +475,6 @@ def analyze():
 
         return jsonify(result)
 
-    except json.JSONDecodeError as e:
-        return jsonify({"error": f"Réponse JSON invalide : {str(e)}", "raw": raw}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -641,6 +557,292 @@ def chat():
         stream_with_context(generate()),
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
+
+@app.route("/history/last", methods=["GET"])
+@login_required
+def get_last_analysis():
+    analysis = (
+        Analysis.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Analysis.created_at.desc())
+        .first()
+    )
+    if not analysis:
+        return jsonify({"error": "no_analysis"}), 404
+    return jsonify(analysis.to_full_dict())
+
+
+DECK_SUMMARY_PROMPT_TEMPLATE = """Tu es un Senior Partner de cabinet de conseil. Voici les résultats d'analyse individuelle d'un deck de {total} slides :
+
+{slides_info}
+
+Fournis une synthèse globale du deck en JSON uniquement, sans markdown, sans backticks :
+{{
+  "global_score": <moyenne pondérée des scores, entier 0-100>,
+  "global_verdict": "PRÊT POUR LE CLIENT" | "À RETRAVAILLER" | "REFAIRE",
+  "executive_summary": "<2-3 phrases résumant la qualité globale du deck en français>",
+  "key_strengths": ["<force 1>", "<force 2>"],
+  "critical_issues": ["<problème critique 1>", "<problème critique 2>"],
+  "priority_actions": ["<action prioritaire 1>", "<action prioritaire 2>", "<action prioritaire 3>"]
+}}"""
+
+
+LEVEL_CALIBRATION = {
+    "consultant": (1.00,  12),
+    "manager":    (1.00,   5),
+    "principal":  (1.00,   0),
+    "senior":     (0.88,  -5),
+}
+
+
+def _compress_image_for_claude(image_bytes, max_dim=1280, quality=82):
+    """Resize image to max_dim on the longest side and re-encode as JPEG.
+    Returns (b64_string, 'image/jpeg'). Speeds up API calls significantly."""
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="JPEG", quality=quality)
+        return base64.standard_b64encode(buf.getvalue()).decode("utf-8"), "image/jpeg"
+    except Exception:
+        # Fallback: send as-is
+        return base64.standard_b64encode(image_bytes).decode("utf-8"), "image/jpeg"
+
+
+def _analyze_image_bytes(img_b64, media_type, context, level, slide_label=""):
+    """Shared helper: call Claude on a single image and return the parsed result dict."""
+    tone = LEVEL_TONES.get(level, LEVEL_TONES["principal"])
+    prompt_parts = [f"NIVEAU D'EXIGENCE : {tone}"]
+    if context:
+        prompt_parts.append(f"Contexte fourni par l'utilisateur : {context}")
+    if slide_label:
+        prompt_parts.append(slide_label)
+    prompt_parts.append(ANALYSIS_PROMPT)
+    prompt = "\n\n".join(prompt_parts)
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=3000,
+        system=SYSTEM_PROMPT,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}},
+                {"type": "text", "text": prompt},
+            ],
+        }],
+    )
+
+    raw = response.content[0].text.strip()
+    json_block = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
+    if json_block:
+        raw = json_block.group(1).strip()
+    start = raw.find('{')
+    if start == -1:
+        return {"is_slide": False, "reason": "JSON non trouvé"}
+    raw = _repair_json(raw[start:])
+    try:
+        result, _ = json.JSONDecoder().raw_decode(raw)
+    except json.JSONDecodeError:
+        end = raw.rfind('}')
+        result = json.loads(raw[:end + 1])
+
+    # Apply calibration
+    scale, offset = LEVEL_CALIBRATION.get(level, (1.00, 0))
+    scores = result.get("scores", {})
+    if scores:
+        calibrated = {k: max(0, min(100, round(v * scale + offset))) for k, v in scores.items()}
+        result["scores"] = calibrated
+        computed_score = round(
+            calibrated.get("structure", 50) * 0.30 +
+            calibrated.get("design",    50) * 0.20 +
+            calibrated.get("impact",    50) * 0.30 +
+            calibrated.get("message",   50) * 0.20
+        )
+        result["global_score"] = computed_score
+        any_very_low = any(v < 30 for v in calibrated.values())
+        any_low      = any(v < 55 for v in calibrated.values())
+        if computed_score >= 72 and not any_low:
+            result["verdict"] = "PRÊT POUR LE CLIENT"
+        elif computed_score < 45 or any_very_low:
+            result["verdict"] = "REFAIRE"
+        else:
+            result["verdict"] = "À RETRAVAILLER"
+
+    return result
+
+
+@app.route("/analyze-deck", methods=["POST"])
+@login_required
+def analyze_deck():
+    if current_user.plan_level != 'pro':
+        return jsonify({"error": "plan_required", "required_plan": "pro"}), 402
+
+    if not HAS_PYMUPDF:
+        return jsonify({"error": "PDF support non disponible (pymupdf manquant)"}), 500
+
+    if "pdf" not in request.files:
+        return jsonify({"error": "Aucun fichier PDF fourni"}), 400
+
+    pdf_file = request.files["pdf"]
+    if not pdf_file.filename.lower().endswith('.pdf'):
+        return jsonify({"error": "Le fichier doit être un PDF"}), 400
+
+    pdf_bytes  = pdf_file.read()
+    pdf_name   = pdf_file.filename
+    context    = request.form.get("context", "").strip()
+    level      = request.form.get("level", "principal").strip()
+    user_id    = current_user.id
+
+    def generate():
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            total_pages = min(len(doc), 30)  # max 30 slides
+
+            yield f"data: {json.dumps({'type': 'start', 'total': total_pages})}\n\n"
+
+            # ── Étape 1 : extraire toutes les images du PDF (rapide, local) ────
+            pages_data = []  # list of (index, raw_img_bytes)
+            for i in range(total_pages):
+                page = doc[i]
+                mat  = fitz.Matrix(1.5, 1.5)   # 1.5× : bonne qualité, payload réduit vs 2×
+                pix  = page.get_pixmap(matrix=mat)
+                raw  = pix.tobytes("jpeg")
+                pages_data.append((i, raw))
+            doc.close()
+
+            yield f"data: {json.dumps({'type': 'progress', 'slide': 0, 'total': total_pages, 'pct': 12, 'message': f'Analyse de {total_pages} slides en parallèle…'})}\n\n"
+
+            # ── Étape 2 : analyser toutes les slides EN PARALLÈLE ───────────────
+            slide_analyses  = [None] * total_pages
+            slide_thumbnails = [None] * total_pages
+
+            def _analyze_one(args):
+                idx, raw_bytes = args
+                # Compress before Claude (1280px max)
+                img_b64, _ = _compress_image_for_claude(raw_bytes, max_dim=1280, quality=82)
+                try:
+                    res = _analyze_image_bytes(
+                        img_b64, "image/jpeg", context, level,
+                        slide_label=f"Slide {idx + 1}/{total_pages} du deck."
+                    )
+                except Exception as e:
+                    res = {"is_slide": True, "verdict": "ERREUR", "global_score": 0,
+                           "scores": {}, "error": str(e)}
+                # Thumbnail
+                thumb = None
+                try:
+                    img = Image.open(io.BytesIO(raw_bytes))
+                    img.thumbnail((300, 300), Image.LANCZOS)
+                    buf = io.BytesIO()
+                    img.convert("RGB").save(buf, format="JPEG", quality=70)
+                    thumb = "data:image/jpeg;base64," + base64.standard_b64encode(buf.getvalue()).decode()
+                except Exception:
+                    pass
+                return idx, res, thumb
+
+            completed = 0
+            max_workers = min(total_pages, 8)  # max 8 appels simultanés
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                futures = {pool.submit(_analyze_one, args): args[0] for args in pages_data}
+                for future in as_completed(futures):
+                    idx, result, thumbnail = future.result()
+                    slide_analyses[idx]   = result
+                    slide_thumbnails[idx] = thumbnail
+                    completed += 1
+                    pct = int(12 + (completed / total_pages) * 72)
+                    yield f"data: {json.dumps({'type': 'slide_done', 'index': idx, 'result': result, 'thumbnail': thumbnail})}\n\n"
+                    yield f"data: {json.dumps({'type': 'progress', 'slide': completed, 'total': total_pages, 'pct': pct, 'message': f'{completed}/{total_pages} slides analysées'})}\n\n"
+
+            # ── Global deck summary ───────────────────────────────────────────
+            yield f"data: {json.dumps({'type': 'progress', 'slide': None, 'total': total_pages, 'pct': 90, 'message': 'Synthèse du deck...'})}\n\n"
+
+            slides_info = "\n".join(
+                f"Slide {i + 1}: Score={r.get('global_score', '?')}/100, "
+                f"Verdict={r.get('verdict', '?')}, Type={r.get('slide_type', '?')}"
+                for i, r in enumerate(slide_analyses) if r.get("is_slide", True)
+            )
+            summary_prompt = DECK_SUMMARY_PROMPT_TEMPLATE.format(
+                total=total_pages, slides_info=slides_info
+            )
+
+            try:
+                sum_resp = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=800,
+                    messages=[{"role": "user", "content": summary_prompt}],
+                )
+                sum_raw = sum_resp.content[0].text.strip()
+                jb = re.search(r'```(?:json)?\s*([\s\S]*?)```', sum_raw)
+                if jb:
+                    sum_raw = jb.group(1).strip()
+                s = sum_raw.find('{')
+                if s != -1:
+                    sum_raw = _repair_json(sum_raw[s:])
+                    try:
+                        summary, _ = json.JSONDecoder().raw_decode(sum_raw)
+                    except json.JSONDecodeError:
+                        e2 = sum_raw.rfind('}')
+                        summary = json.loads(sum_raw[:e2 + 1])
+                else:
+                    raise ValueError("No JSON in summary response")
+            except Exception:
+                scores_list = [r.get("global_score", 0) for r in slide_analyses if r.get("is_slide", True)]
+                avg = round(sum(scores_list) / len(scores_list)) if scores_list else 0
+                summary = {
+                    "global_score": avg,
+                    "global_verdict": "À RETRAVAILLER",
+                    "executive_summary": "Analyse du deck complétée.",
+                    "key_strengths": [],
+                    "critical_issues": [],
+                    "priority_actions": [],
+                }
+
+            # ── Persist to DB ─────────────────────────────────────────────────
+            deck = Deck(
+                user_id=user_id,
+                filename=pdf_name,
+                slides_count=total_pages,
+                global_score=summary.get("global_score"),
+                global_verdict=summary.get("global_verdict"),
+                summary_json=json.dumps(summary),
+            )
+            db.session.add(deck)
+            db.session.flush()  # get deck.id
+
+            for i, (result, thumbnail) in enumerate(zip(slide_analyses, slide_thumbnails)):
+                if result.get("is_slide", True) and result.get("verdict") != "ERREUR":
+                    an = Analysis(
+                        user_id=user_id,
+                        deck_id=deck.id,
+                        filename=f"{pdf_name} — Slide {i + 1}",
+                        timestamp=datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        verdict=result.get("verdict"),
+                        global_score=result.get("global_score"),
+                        slide_type=result.get("slide_type"),
+                        scores_json=json.dumps(result.get("scores", {})),
+                        result_json=json.dumps(result),
+                        thumbnail=thumbnail,
+                    )
+                    db.session.add(an)
+
+            db.session.commit()
+            deck_id = deck.id
+
+            yield f"data: {json.dumps({'type': 'summary_done', 'summary': summary, 'deck_id': deck_id})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
