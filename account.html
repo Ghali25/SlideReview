@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon compte — SlideReview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f5f7; --white: #fff; --text: #1a1d23; --muted: #6b7280;
+      --border: #e5e7eb; --purple: #7c6af7; --red: #ef4444; --green: #10b981;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: 0 2rem; height: 56px; display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-size: 1.2rem; font-weight: 700; }
+    .logo span { color: var(--purple); }
+    .header-right a { font-size: 0.875rem; color: var(--muted); text-decoration: none; }
+    .header-right a:hover { color: var(--text); }
+
+    .main { max-width: 680px; margin: 0 auto; padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* CARD */
+    .card {
+      background: var(--white); border-radius: 14px; border: 1px solid var(--border);
+      padding: 1.75rem;
+    }
+    .card-title {
+      font-size: 0.9rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.25rem;
+    }
+
+    /* PROFILE */
+    .profile-row { display: flex; align-items: flex-start; gap: 1.25rem; margin-bottom: 1.5rem; }
+    .avatar-wrap { position: relative; flex-shrink: 0; cursor: pointer; }
+    .avatar {
+      width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
+      background: linear-gradient(135deg, #7c6af7, #6d28d9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 700; color: white;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-overlay {
+      position: absolute; top: 0; left: 0; width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(0,0,0,0.45); display: flex; align-items: center;
+      justify-content: center; opacity: 0; transition: opacity 0.2s;
+      font-size: 1rem;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity: 1; }
+    .avatar-input { display: none; }
+    .avatar-hint { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 4px; }
+    .profile-meta { flex: 1; padding-top: 8px; }
+    .profile-name { font-size: 1.1rem; font-weight: 600; }
+    .profile-email { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+    .profile-since { font-size: 0.8rem; color: #9ca3af; margin-top: 4px; }
+
+    /* FORM */
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
+    .field input {
+      width: 100%; padding: 0.7rem 0.9rem;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 0.9rem; font-family: inherit; outline: none;
+      transition: border-color 0.15s; color: var(--text);
+    }
+    .field input:focus { border-color: var(--purple); }
+    .field input:disabled { background: #f9fafb; color: var(--muted); cursor: not-allowed; }
+
+    .btn {
+      padding: 0.65rem 1.25rem; border-radius: 9px; border: none;
+      font-size: 0.875rem; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--purple); color: white; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--purple); color: var(--purple); opacity: 1; }
+    .btn-danger { background: #fee2e2; color: #991b1b; border: none; }
+    .btn-danger:hover { background: #fecaca; opacity: 1; }
+
+    .btn-row { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
+
+    /* PLAN */
+    .plan-row { display: flex; align-items: center; justify-content: space-between; }
+    .plan-info { display: flex; align-items: center; gap: 0.75rem; }
+    .plan-badge {
+      font-size: 0.8rem; font-weight: 700; padding: 4px 12px;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .plan-free { background: #f3f4f6; color: var(--muted); }
+    .plan-starter { background: #ede9fe; color: #7c3aed; }
+    .plan-pro { background: #d1fae5; color: #065f46; }
+    .plan-detail { font-size: 0.875rem; color: var(--muted); }
+    .trial-count { font-size: 0.875rem; color: var(--muted); }
+    .trial-count strong { color: var(--text); }
+    .trial-low { color: #f59e0b; }
+
+    /* STATS ROW */
+    .stats-row { display: flex; gap: 1.5rem; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.6rem; font-weight: 700; color: var(--purple); }
+    .stat-lbl { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+
+    /* DANGER */
+    .danger-text { font-size: 0.875rem; color: var(--muted); margin-bottom: 1rem; }
+
+    /* MESSAGES */
+    .msg { font-size: 0.85rem; margin-top: 0.75rem; padding: 0.6rem 0.9rem; border-radius: 8px; display: none; }
+    .msg-ok { background: #d1fae5; color: #065f46; }
+    .msg-err { background: #fee2e2; color: #991b1b; }
+
+    /* MODAL */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50; display: none;
+    }
+    .modal {
+      background: var(--white); border-radius: 14px; padding: 2rem;
+      max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .modal p { font-size: 0.875rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .modal .btn-row { margin-top: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Slide<span>Review</span></div>
+  <div class="header-right">
+    <a href="/">← Retour à l'application</a>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- PROFILE CARD -->
+  <div class="card">
+    <div class="card-title">Profil</div>
+    <div class="profile-row">
+      <div class="avatar-wrap" onclick="document.getElementById('avatarInput').click()">
+        <div class="avatar" id="avatarEl"></div>
+        <div class="avatar-overlay">📷</div>
+        <input type="file" id="avatarInput" class="avatar-input" accept="image/*">
+        <div class="avatar-hint">Changer</div>
+      </div>
+      <div class="profile-meta">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-email" id="profileEmail">—</div>
+        <div class="profile-since" id="profileSince"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Nom affiché</label>
+      <input type="text" id="nameInput" placeholder="Votre nom">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveName()">Enregistrer</button>
+      <span class="msg msg-ok" id="nameOk">Nom mis à jour ✓</span>
+      <span class="msg msg-err" id="nameErr"></span>
+    </div>
+  </div>
+
+  <!-- PASSWORD CARD -->
+  <div class="card" id="passwordCard" style="display:none">
+    <div class="card-title">Changer le mot de passe</div>
+    <div class="field">
+      <label>Mot de passe actuel</label>
+      <input type="password" id="currentPwd" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Nouveau mot de passe</label>
+      <input type="password" id="newPwd" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Confirmer le nouveau mot de passe</label>
+      <input type="password" id="confirmPwd" placeholder="••••••••">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="changePassword()">Changer</button>
+      <span class="msg msg-ok" id="pwdOk">Mot de passe mis à jour ✓</span>
+      <span class="msg msg-err" id="pwdErr"></span>
+    </div>
+  </div>
+
+  <!-- PLAN CARD -->
+  <div class="card">
+    <div class="card-title">Abonnement</div>
+    <div class="plan-row" id="planRow">
+      <div class="plan-info">
+        <span class="plan-badge plan-free" id="planBadge">Free</span>
+        <span class="plan-detail" id="planDetail"></span>
+      </div>
+      <div id="planActions"></div>
+    </div>
+    <div id="trialInfo" style="margin-top:1rem"></div>
+  </div>
+
+  <!-- STATS CARD -->
+  <div class="card">
+    <div class="card-title">Activité</div>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-num" id="statAnalyses">—</div>
+        <div class="stat-lbl">Analyses</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DANGER ZONE -->
+  <div class="card">
+    <div class="card-title" style="color:#ef4444">Zone de danger</div>
+    <p class="danger-text">La suppression de votre compte est définitive. Toutes vos analyses seront perdues.</p>
+    <button class="btn btn-danger" onclick="confirmDelete()">Supprimer mon compte</button>
+  </div>
+
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="overlay" id="deleteOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h3>Supprimer le compte ?</h3>
+    <p>Cette action est irréversible. Toutes vos données et analyses seront définitivement supprimées.</p>
+    <div class="btn-row">
+      <button class="btn btn-danger" onclick="deleteAccount()">Oui, supprimer</button>
+      <button class="btn btn-outline" onclick="document.getElementById('deleteOverlay').style.display='none'">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let userData = null;
+
+async function loadAccount() {
+  const res = await fetch('/me');
+  const d = await res.json();
+  if (!d.authenticated) { window.location.href = '/'; return; }
+
+  userData = d.user;
+  const u = d.user;
+
+  // Avatar
+  const avatarEl = document.getElementById('avatarEl');
+  if (u.avatar) {
+    avatarEl.innerHTML = `<img src="${u.avatar}" alt="">`;
+  } else {
+    avatarEl.textContent = (u.name || u.email || '?')[0].toUpperCase();
+  }
+
+  // Profile
+  document.getElementById('profileName').textContent = u.name || '—';
+  document.getElementById('profileEmail').textContent = u.email;
+  document.getElementById('nameInput').value = u.name || '';
+
+  // Joined date
+  if (u.created_at) {
+    document.getElementById('profileSince').textContent = 'Membre depuis ' + u.created_at;
+  }
+
+  // Password card (only for email users)
+  if (u.has_password) {
+    document.getElementById('passwordCard').style.display = 'block';
+  }
+
+  // Plan
+  const plan = u.plan_level || 'free';
+  const badge = document.getElementById('planBadge');
+  badge.textContent = plan === 'pro' ? 'Pro' : plan === 'starter' ? 'Starter' : 'Gratuit';
+  badge.className = `plan-badge plan-${plan}`;
+
+  const planDetail = document.getElementById('planDetail');
+  const planActions = document.getElementById('planActions');
+
+  if (plan === 'free') {
+    const count = u.trial_count ?? 0;
+    const lowClass = count <= 2 ? 'trial-low' : '';
+    document.getElementById('trialInfo').innerHTML =
+      `<span class="trial-count ${lowClass}"><strong>${count}</strong> analyse${count > 1 ? 's' : ''} gratuite${count > 1 ? 's' : ''} restante${count > 1 ? 's' : ''}</span>`;
+    planDetail.textContent = '5 analyses gratuites à la création';
+    planActions.innerHTML = `<a href="/pricing"><button class="btn btn-primary" style="font-size:0.8rem">Passer à la version payante →</button></a>`;
+  } else if (plan === 'starter') {
+    planDetail.textContent = 'Analyses illimitées · Dimensions';
+    planActions.innerHTML = `<a href="/subscription/portal"><button class="btn btn-outline" style="font-size:0.8rem">Gérer l'abonnement</button></a>`;
+  } else if (plan === 'pro') {
+    planDetail.textContent = 'Tout inclus · Reformulations · Historique';
+    planActions.innerHTML = `<a href="/subscription/portal"><button class="btn btn-outline" style="font-size:0.8rem">Gérer l'abonnement</button></a>`;
+  }
+
+  // Stats
+  document.getElementById('statAnalyses').textContent = u.analyses_count ?? '—';
+
+  // Avatar upload listener
+  document.getElementById('avatarInput').addEventListener('change', handleAvatarUpload);
+}
+
+function setAvatarEl(src) {
+  const avatarEl = document.getElementById('avatarEl');
+  avatarEl.innerHTML = `<img src="${src}" alt="">`;
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { alert('Image trop lourde (max 5 Mo)'); return; }
+
+  // Resize to 200x200 via Canvas
+  const dataUrl = await resizeImage(file, 200);
+
+  // Send to backend
+  const res = await fetch('/account/avatar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ avatar: dataUrl }),
+  });
+  const d = await res.json();
+  if (d.ok) {
+    setAvatarEl(dataUrl);
+    showMsg('nameOk', 'Photo mise à jour ✓');
+  } else {
+    alert(d.error || 'Erreur upload');
+  }
+}
+
+function resizeImage(file, size) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // Crop to square from center
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveName() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return;
+  hideMessages('name');
+  const res = await fetch('/account/profile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const d = await res.json();
+  if (d.ok) {
+    document.getElementById('profileName').textContent = name;
+    showMsg('nameOk');
+  } else {
+    showMsg('nameErr', d.error || 'Erreur');
+  }
+}
+
+async function changePassword() {
+  hideMessages('pwd');
+  const current = document.getElementById('currentPwd').value;
+  const newPwd = document.getElementById('newPwd').value;
+  const confirm = document.getElementById('confirmPwd').value;
+  if (newPwd.length < 6) { showMsg('pwdErr', 'Minimum 6 caractères'); return; }
+  if (newPwd !== confirm) { showMsg('pwdErr', 'Les mots de passe ne correspondent pas'); return; }
+
+  const res = await fetch('/account/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: current, new_password: newPwd }),
+  });
+  const d = await res.json();
+  if (d.ok) {
+    document.getElementById('currentPwd').value = '';
+    document.getElementById('newPwd').value = '';
+    document.getElementById('confirmPwd').value = '';
+    showMsg('pwdOk');
+  } else {
+    showMsg('pwdErr', d.error || 'Erreur');
+  }
+}
+
+function confirmDelete() {
+  document.getElementById('deleteOverlay').style.display = 'flex';
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('deleteOverlay')) {
+    document.getElementById('deleteOverlay').style.display = 'none';
+  }
+}
+
+async function deleteAccount() {
+  const res = await fetch('/account/delete', { method: 'POST' });
+  const d = await res.json();
+  if (d.ok) window.location.href = '/';
+}
+
+function showMsg(id, text) {
+  const el = document.getElementById(id);
+  if (text) el.textContent = text;
+  el.style.display = 'inline-block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function hideMessages(prefix) {
+  ['Ok', 'Err'].forEach(s => {
+    const el = document.getElementById(prefix + s);
+    if (el) el.style.display = 'none';
+  });
+}
+
+loadAccount();
+</script>
+</body>
+</html>

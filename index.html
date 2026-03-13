@@ -36,10 +36,58 @@
     background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
   }
   .logo span { font-weight:300; }
+
+  /* SPINNER ONGLET ANALYSE */
+  .nav-tab-spinner {
+    display:none; width:13px; height:13px; border-radius:50%;
+    border:2px solid rgba(109,40,217,0.25); border-top-color:#6d28d9;
+    vertical-align:middle; margin-right:2px; flex-shrink:0;
+  }
+  @keyframes navTabSpin { to { transform:rotate(360deg); } }
+  .nav-tab-spinner.active { display:inline-block; animation:navTabSpin 0.65s linear infinite; }
+  .nav-tab-icon.hidden { display:none; }
   .badge-partner {
     font-size:11px; font-weight:600; padding:4px 10px;
     background:rgba(109,40,217,0.08); border:1px solid rgba(109,40,217,0.25);
     border-radius:20px; color:#6d28d9; letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .plan-badge {
+    font-size:11px; font-weight:600; padding:4px 10px;
+    border-radius:20px; letter-spacing:0.5px; text-transform:uppercase;
+    cursor:pointer; text-decoration:none; display:inline-block;
+  }
+  .plan-badge.free { background:#fef3c7; border:1px solid #fcd34d; color:#92400e; }
+  .plan-badge.free.low { background:#fee2e2; border-color:#fca5a5; color:#991b1b; }
+  .plan-badge.starter { background:rgba(109,40,217,0.08); border:1px solid rgba(109,40,217,0.25); color:#6d28d9; }
+  .plan-badge.pro { background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; }
+
+  /* LOCKED TABS */
+  .tab-btn.locked { opacity:0.5; cursor:default; }
+  .tab-btn.locked::after { content:' 🔒'; font-size:10px; }
+
+  /* UPGRADE MODAL */
+  .upgrade-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .upgrade-overlay.hidden { display:none; }
+  .upgrade-modal {
+    background:#fff; border-radius:16px; padding:2rem;
+    max-width:380px; width:90%; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.15);
+  }
+  .upgrade-modal .upgrade-icon { font-size:2.5rem; margin-bottom:0.75rem; }
+  .upgrade-modal h3 { font-size:1.2rem; font-weight:700; margin-bottom:0.5rem; }
+  .upgrade-modal p { font-size:0.875rem; color:#6b7280; margin-bottom:1.5rem; line-height:1.5; }
+  .upgrade-modal .btn-upgrade {
+    display:block; width:100%; padding:0.85rem; border-radius:10px;
+    background:linear-gradient(135deg,#7c6af7,#6d28d9); color:white;
+    font-weight:600; font-size:0.95rem; text-decoration:none;
+    margin-bottom:0.75rem; cursor:pointer; border:none;
+  }
+  .upgrade-modal .btn-cancel {
+    background:none; border:none; color:#9ca3af; font-size:0.875rem;
+    cursor:pointer; padding:0.25rem;
   }
 
   /* LAYOUT */
@@ -71,6 +119,14 @@
     display:flex; align-items:center; justify-content:center;
   }
   .slide-container.has-image { background:#f0f0f0; }
+  .slide-clear-btn {
+    position:absolute; top:8px; right:8px; z-index:10;
+    width:24px; height:24px; border-radius:50%;
+    background:rgba(0,0,0,0.5); color:#fff; border:none;
+    font-size:14px; line-height:1; cursor:pointer; display:none;
+    align-items:center; justify-content:center;
+  }
+  .slide-container.has-image .slide-clear-btn { display:flex; }
   #slidePreview {
     width:100%; height:auto; display:none;
     transition:filter 0.8s ease;
@@ -120,6 +176,37 @@
   }
   .five-sec-btn:hover { border-color:var(--accent3); color:var(--accent3); }
   .five-sec-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .five-sec-hint { font-size:11px; color:var(--muted); text-align:center; margin-top:5px; }
+
+  /* CONTEXT BOX */
+  .context-box { padding:0 20px; margin-bottom:12px; }
+  .context-label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .context-label span { font-weight:400; text-transform:none; letter-spacing:0; opacity:0.8; }
+  .context-textarea {
+    width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:9px;
+    font-size:12.5px; font-family:inherit; color:var(--text); resize:none;
+    background:var(--surface); outline:none; transition:border-color 0.15s; line-height:1.5;
+  }
+  .context-textarea:focus { border-color:var(--accent1); }
+  .context-textarea::placeholder { color:#adb5bd; }
+  .level-row { display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .level-label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+  .level-select {
+    flex:1; padding:7px 10px; border:1.5px solid var(--border); border-radius:8px;
+    font-size:12.5px; font-family:inherit; color:var(--text); background:var(--surface);
+    outline:none; cursor:pointer; transition:border-color 0.15s; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; padding-right:28px;
+  }
+  .level-select:focus { border-color:var(--accent1); }
+  .level-badge {
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:20px;
+    white-space:nowrap; transition:all 0.2s;
+  }
+  .level-badge.consultant  { background:rgba(5,150,105,0.1);  color:#059669; }
+  .level-badge.manager     { background:rgba(8,145,178,0.1);  color:#0891b2; }
+  .level-badge.principal   { background:rgba(124,58,237,0.1); color:#7c3aed; }
+  .level-badge.senior      { background:rgba(220,38,38,0.1);  color:#dc2626; }
   #fiveSecResult {
     margin-top:8px; padding:10px 14px; border-radius:8px;
     background:rgba(8,145,178,0.06); border:1px solid rgba(8,145,178,0.25);
@@ -136,26 +223,110 @@
   .analyze-btn:hover { opacity:0.9; }
   .analyze-btn:disabled { opacity:0.4; cursor:not-allowed; }
 
+  /* CHAT */
+  .chat-box {
+    margin:12px 20px 20px; border:1.5px solid var(--border);
+    border-radius:12px; background:var(--surface); overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .chat-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    background:var(--surface2);
+  }
+  .chat-header-title { font-size:12px; font-weight:700; color:var(--text); }
+  .chat-clear-btn {
+    background:none; border:none; cursor:pointer; font-size:14px;
+    color:var(--muted); padding:2px 6px; border-radius:6px; transition:background 0.15s;
+  }
+  .chat-clear-btn:hover { background:var(--border); }
+  .chat-messages {
+    display:flex; flex-direction:column; gap:8px;
+    padding:12px 14px; max-height:320px; overflow-y:auto;
+    scroll-behavior:smooth;
+  }
+  .chat-bubble { display:flex; flex-direction:column; gap:2px; }
+  .chat-bubble.user { align-items:flex-end; }
+  .chat-bubble.assistant { align-items:flex-start; }
+  .chat-bubble-content {
+    max-width:85%; padding:9px 12px; border-radius:12px;
+    font-size:12.5px; line-height:1.55; white-space:pre-wrap; word-break:break-word;
+  }
+  .chat-bubble.user .chat-bubble-content {
+    background:linear-gradient(135deg,#6d28d9,#2563eb); color:#fff;
+    border-bottom-right-radius:3px;
+  }
+  .chat-bubble.assistant .chat-bubble-content {
+    background:var(--surface2); color:var(--text); border:1px solid var(--border);
+    border-bottom-left-radius:3px;
+  }
+  .chat-bubble-content.streaming::after {
+    content:'▋'; animation:blink 0.8s step-end infinite; margin-left:2px;
+  }
+  @keyframes blink { 50% { opacity:0; } }
+  .chat-input-row {
+    display:flex; align-items:flex-end; gap:8px;
+    padding:10px 12px; border-top:1px solid var(--border); background:var(--surface);
+  }
+  .chat-textarea {
+    flex:1; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px;
+    font-size:12.5px; font-family:inherit; color:var(--text); background:var(--surface2);
+    resize:none; outline:none; transition:border-color 0.15s; line-height:1.4;
+  }
+  .chat-textarea:focus { border-color:var(--accent1); }
+  .chat-send-btn {
+    width:34px; height:34px; border-radius:8px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#6d28d9,#2563eb); color:#fff;
+    font-size:16px; font-weight:700; display:flex; align-items:center;
+    justify-content:center; flex-shrink:0; transition:opacity 0.15s;
+  }
+  .chat-send-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .chat-send-btn:hover:not(:disabled) { opacity:0.85; }
+
   /* RIGHT PANEL */
-  .right-panel { overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:20px; }
+  .right-panel { display:flex; flex-direction:column; overflow:hidden; }
 
   /* EMPTY STATE */
   .empty-state {
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    color:var(--muted); text-align:center; gap:12px;
+    color:var(--muted); text-align:center; gap:12px; min-height:200px;
   }
   .empty-state .big-icon { font-size:64px; opacity:0.3; }
   .empty-state p { font-size:14px; line-height:1.6; max-width:320px; }
+  .tab-content .empty-state { flex:1; min-height:200px; }
 
   /* LOADING */
-  .loading-state { display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; flex:1; }
-  .spinner {
-    width:48px; height:48px; border-radius:50%;
-    border:3px solid var(--border); border-top-color:var(--accent1);
-    animation:spin 0.8s linear infinite;
+  .loading-state { display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; flex:1; padding:40px; }
+  .loading-icon { font-size:36px; animation:pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.1);opacity:0.7} }
+  .loading-step { font-size:14px; font-weight:600; color:var(--text); text-align:center; min-height:20px; }
+  .loading-substep { font-size:12px; color:var(--muted); text-align:center; min-height:16px; }
+  .progress-bar-track {
+    width:100%; max-width:320px; height:6px;
+    background:var(--surface2); border-radius:3px; overflow:hidden;
   }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .loading-text { color:var(--muted); font-size:14px; }
+  .progress-bar-fill {
+    height:100%; border-radius:3px;
+    background:var(--grad); width:0%;
+    transition:width 0.6s ease;
+  }
+  .loading-steps-list {
+    display:flex; flex-direction:column; gap:8px; width:100%; max-width:320px;
+  }
+  .loading-step-item {
+    display:flex; align-items:center; gap:10px;
+    font-size:12px; color:var(--muted);
+  }
+  .loading-step-item.done { color:var(--ok); }
+  .loading-step-item.active { color:var(--text); font-weight:600; }
+  .step-dot {
+    width:18px; height:18px; border-radius:50%; flex-shrink:0;
+    border:2px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:10px;
+  }
+  .loading-step-item.done .step-dot { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .loading-step-item.active .step-dot { border-color:var(--accent1); animation:ring 1s ease infinite; }
+  @keyframes ring { 0%,100%{box-shadow:0 0 0 0 rgba(109,40,217,0.3)} 50%{box-shadow:0 0 0 4px rgba(109,40,217,0.1)} }
 
   /* VERDICT CARD */
   .verdict-card {
@@ -200,8 +371,8 @@
     color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s;
   }
   .tab-btn.active { background:var(--surface2); color:var(--text); }
-  .tab-content { display:none; }
-  .tab-content.active { display:block; }
+  .tab-content { display:none; flex-direction:column; }
+  .tab-content.active { display:flex; flex-direction:column; }
 
   /* DIMENSIONS */
   .dimension-card {
@@ -238,6 +409,7 @@
     background:var(--surface); border:1px solid var(--border);
     border-radius:var(--radius); padding:18px;
   }
+  .reformulation-card:empty { display:none; }
   .reform-row { margin-bottom:14px; }
   .reform-label { font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px; }
   .reform-before {
@@ -258,56 +430,205 @@
   .delete-item::before { content:'✕'; color:var(--err); flex-shrink:0; }
 
   /* TEMPLATES */
-  .templates-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .templates-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
   .template-card {
     background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--radius); padding:16px; cursor:pointer;
+    border-radius:var(--radius); padding:10px; cursor:pointer;
     transition:all 0.2s; position:relative; overflow:hidden;
   }
   .template-card::before {
-    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
     background:var(--card-color, var(--accent1));
   }
-  .template-card:hover { border-color:var(--card-color, var(--accent1)); transform:translateY(-2px); }
+  .template-card:hover { border-color:var(--card-color, var(--accent1)); transform:translateY(-1px); }
   .template-card.matched { border-color:var(--card-color, var(--accent1)); background:rgba(124,58,237,0.05); }
   .template-card.matched::after {
-    content:'✓ Recommandé'; position:absolute; top:10px; right:10px;
-    font-size:10px; font-weight:700; color:#fff; padding:2px 8px;
-    background:var(--card-color, var(--accent1)); border-radius:10px;
+    content:'✓'; position:absolute; top:7px; right:7px;
+    font-size:9px; font-weight:700; color:#fff; padding:1px 5px;
+    background:var(--card-color, var(--accent1)); border-radius:8px;
   }
-  .template-icon { font-size:24px; margin-bottom:8px; }
-  .template-name { font-weight:700; font-size:14px; margin-bottom:4px; }
-  .template-desc { font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.4; }
-  .template-structure { display:flex; flex-direction:column; gap:3px; }
+  .template-icon { font-size:18px; margin-bottom:4px; }
+  .template-name { font-weight:700; font-size:12px; margin-bottom:2px; }
+  .template-desc { font-size:10.5px; color:var(--muted); margin-bottom:6px; line-height:1.35; }
+  .template-structure { display:flex; flex-direction:column; gap:2px; }
   .template-row {
-    font-size:11px; color:var(--muted); padding:3px 6px;
-    background:var(--surface2); border-radius:4px;
+    font-size:10px; color:var(--muted); padding:2px 5px;
+    background:var(--surface2); border-radius:3px;
   }
-  .template-best { font-size:11px; color:var(--accent3); margin-top:8px; }
+  /* TEMPLATE PREVIEW SVG */
+  .template-preview {
+    margin:-10px -10px 8px; border-bottom:1px solid var(--border);
+    overflow:hidden; border-radius:var(--radius) var(--radius) 0 0;
+    background:#f8f9fb; cursor:pointer; position:relative;
+  }
+  .template-preview svg { width:100%; height:auto; display:block; }
+  .template-preview-label {
+    position:absolute; bottom:4px; right:5px;
+    font-size:8px; font-weight:700; letter-spacing:0.3px;
+    color:#6d28d9; background:rgba(255,255,255,0.85);
+    border:1px solid rgba(109,40,217,0.2); border-radius:3px;
+    padding:1px 4px; text-transform:uppercase;
+  }
+  .template-best { font-size:10px; color:var(--accent3); margin-top:6px; }
+
+  /* TOP-LEVEL NAV */
+  .right-nav {
+    display:flex; gap:2px; padding:16px 24px 0;
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .right-nav-btn {
+    padding:9px 18px; border-radius:10px 10px 0 0; border:none;
+    background:none; font-size:13px; font-weight:500; color:var(--muted);
+    cursor:pointer; transition:all 0.15s; position:relative; bottom:-1px;
+  }
+  .right-nav-btn.active {
+    background:var(--surface); color:var(--text); font-weight:600;
+    border:1px solid var(--border); border-bottom-color:var(--surface);
+  }
+  .right-view { display:none; flex:1; overflow-y:auto; padding:24px; flex-direction:column; gap:20px; }
+  .right-view.active { display:flex; }
 
   /* HISTORY */
-  .history-list { display:flex; flex-direction:column; gap:8px; }
+  .history-list { display:flex; flex-direction:column; gap:8px; padding:16px; }
+  .history-empty { text-align:center; padding:60px 20px; color:var(--muted); }
+  .history-empty-icon { font-size:40px; margin-bottom:12px; }
+  .history-empty p { font-size:14px; }
   .history-item {
     background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--radius); padding:14px; display:flex; align-items:center; gap:12px;
+    border-radius:var(--radius); padding:12px 14px; display:flex; align-items:center; gap:12px;
+    transition:all 0.15s; cursor:pointer;
   }
+  .history-item:hover { border-color:var(--accent1); background:rgba(124,106,247,0.04); transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .history-item.active { border-color:var(--accent1); background:rgba(124,106,247,0.06); }
+  .history-thumb {
+    width:52px; height:36px; border-radius:5px; overflow:hidden; flex-shrink:0;
+    background:var(--surface2); display:flex; align-items:center; justify-content:center;
+    font-size:18px; border:1px solid var(--border);
+  }
+  .history-thumb img { width:100%; height:100%; object-fit:cover; }
   .history-score {
-    width:44px; height:44px; border-radius:50%; display:flex; align-items:center;
-    justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;
+    width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-weight:800; font-size:13px; flex-shrink:0;
   }
   .history-info { flex:1; min-width:0; }
-  .history-filename { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .history-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+  .history-filename { font-weight:600; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-meta { font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:6px; align-items:center; }
+  .history-type-badge {
+    font-size:10px; padding:2px 6px; border-radius:5px;
+    background:var(--surface2); color:var(--muted);
+  }
   .history-verdict {
-    font-size:10px; font-weight:700; padding:3px 8px; border-radius:10px;
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:8px;
     text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0;
   }
+  .history-loading { text-align:center; padding:8px; color:var(--muted); font-size:12px; }
+  .history-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 4px; flex-shrink:0; }
+  .history-header-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
+  .history-count { font-size:11px; color:var(--muted); }
 
   /* SECTION TITLE */
   .section-title {
     font-size:11px; text-transform:uppercase; letter-spacing:1px;
     color:var(--muted); margin-bottom:12px; font-weight:600;
   }
+
+  /* GUIDE */
+  .guide-view { display:flex; flex-direction:column; gap:24px; }
+  .guide-intro {
+    background:linear-gradient(135deg, #6d28d9 0%, #1d4ed8 60%, #0891b2 100%);
+    border-radius:var(--radius); padding:28px 24px; flex-shrink:0;
+    position:relative; overflow:hidden;
+  }
+  .guide-intro::before {
+    content:'📖'; position:absolute; right:20px; top:50%; transform:translateY(-50%);
+    font-size:64px; opacity:0.12; line-height:1;
+  }
+  .guide-intro-title {
+    font-size:22px; font-weight:800; margin-bottom:8px;
+    color:#fff; letter-spacing:-0.3px;
+  }
+  .guide-intro p { font-size:13px; color:rgba(255,255,255,0.75); line-height:1.6; max-width:340px; }
+  .guide-intro .guide-refs {
+    margin-top:14px; display:flex; gap:6px; flex-wrap:wrap;
+  }
+  .guide-ref-chip {
+    font-size:11px; padding:4px 10px; border-radius:20px;
+    background:rgba(255,255,255,0.15); color:#fff; font-weight:600;
+    border:1px solid rgba(255,255,255,0.25);
+  }
+  .guide-section {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden;
+  }
+  .guide-section-header {
+    padding:14px 18px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface2);
+  }
+  .guide-section-icon { font-size:18px; line-height:1; flex-shrink:0; display:flex; align-items:center; width:24px; }
+  .guide-section-title { font-size:14px; font-weight:700; }
+  .guide-section-subtitle { font-size:12px; color:var(--muted); margin-left:auto; }
+  .guide-rules { display:flex; flex-direction:column; }
+  .guide-rule {
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    display:flex; gap:14px; align-items:flex-start;
+  }
+  .guide-rule:last-child { border-bottom:none; }
+  .guide-rule-num {
+    flex-shrink:0; width:24px; height:24px; border-radius:50%;
+    background:var(--surface2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:var(--muted);
+    margin-top:1px;
+  }
+  .guide-rule-body { flex:1; }
+  .guide-rule-title { font-size:13px; font-weight:600; margin-bottom:3px; }
+  .guide-rule-desc { font-size:12.5px; color:var(--muted); line-height:1.6; }
+  .guide-rule-example {
+    margin-top:8px; padding:8px 12px; border-radius:7px;
+    background:var(--surface2); border-left:3px solid var(--border);
+    font-size:12px; color:var(--muted); line-height:1.5;
+  }
+  .guide-rule-example .ex-bad {
+    color:var(--err); font-size:11px; text-transform:uppercase; font-weight:700;
+    letter-spacing:0.5px; margin-bottom:2px;
+  }
+  .guide-rule-example .ex-good {
+    color:var(--ok); font-size:11px; text-transform:uppercase; font-weight:700;
+    letter-spacing:0.5px; margin-bottom:2px; margin-top:8px;
+  }
+  .guide-rule-example span { display:block; line-height:1.5; }
+  .guide-rule-accent { color:var(--accent1); }
+  .guide-checklist {
+    padding:14px 18px; display:flex; flex-direction:column; gap:8px;
+  }
+  .guide-check-item {
+    display:flex; gap:10px; align-items:flex-start;
+    font-size:12.5px; line-height:1.5;
+  }
+  .guide-check-icon { flex-shrink:0; font-size:14px; margin-top:1px; }
+  .guide-minto {
+    padding:14px 18px; display:flex; flex-direction:column; gap:6px;
+  }
+  .guide-minto-step {
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    border-radius:8px; background:var(--surface2); border:1px solid var(--border);
+  }
+  .guide-minto-letter {
+    flex-shrink:0; width:28px; height:28px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color:#fff;
+  }
+  .guide-minto-content { flex:1; }
+  .guide-minto-label { font-size:12px; font-weight:700; }
+  .guide-minto-desc { font-size:11.5px; color:var(--muted); }
+  .guide-minto-arrow { color:var(--muted); font-size:12px; text-align:center; }
+  .guide-tip {
+    margin:14px 18px 14px; padding:10px 14px; border-radius:8px;
+    background:rgba(8,145,178,0.06); border:1px solid rgba(8,145,178,0.2);
+    font-size:12px; color:#0369a1; line-height:1.5;
+  }
+  .guide-tip strong { font-weight:700; }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width:6px; }
@@ -319,13 +640,141 @@
     .app { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
     .left-panel { border-right:none; border-bottom:1px solid var(--border); max-height:50vh; }
   }
+
+  /* USER HEADER */
+  .user-info { display:flex; align-items:center; gap:10px; }
+  .user-avatar {
+    width:32px; height:32px; border-radius:50%; object-fit:cover;
+    border:2px solid var(--border);
+  }
+  .user-avatar-placeholder {
+    width:32px; height:32px; border-radius:50%;
+    background:var(--grad); display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:#fff;
+  }
+  .user-name { font-size:13px; font-weight:600; color:var(--text); }
+  .logout-btn {
+    font-size:12px; color:var(--muted); background:none; border:none;
+    cursor:pointer; padding:4px 8px; border-radius:6px;
+  }
+  .logout-btn:hover { background:var(--surface2); color:var(--err); }
+
+  /* AUTH MODAL */
+  .auth-overlay {
+    position:fixed; inset:0; background:rgba(15,15,30,0.6); backdrop-filter:blur(4px);
+    z-index:1000; display:flex; align-items:center; justify-content:center;
+  }
+  .auth-overlay.hidden { display:none; }
+  .auth-modal {
+    background:var(--surface); border-radius:20px; padding:36px;
+    width:100%; max-width:420px; box-shadow:0 24px 64px rgba(0,0,0,0.18);
+  }
+  .auth-logo { font-size:22px; font-weight:700; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:6px; }
+  .auth-subtitle { font-size:13px; color:var(--muted); margin-bottom:24px; }
+  .auth-tabs { display:flex; gap:4px; background:var(--surface2); border-radius:10px; padding:4px; margin-bottom:24px; }
+  .auth-tab {
+    flex:1; padding:8px; border-radius:8px; border:none; background:none;
+    font-size:13px; font-weight:500; color:var(--muted); cursor:pointer;
+  }
+  .auth-tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+  .auth-form { display:flex; flex-direction:column; gap:12px; }
+  .auth-form.hidden { display:none; }
+  .auth-input {
+    padding:11px 14px; border-radius:10px; border:1px solid var(--border);
+    font-size:14px; background:var(--surface); color:var(--text);
+    outline:none; transition:border-color 0.2s;
+  }
+  .auth-input:focus { border-color:var(--accent1); }
+  .auth-submit {
+    padding:12px; border-radius:10px; border:none; cursor:pointer;
+    background:var(--grad); color:#fff; font-size:14px; font-weight:600;
+    margin-top:4px;
+  }
+  .auth-error { font-size:12px; color:var(--err); min-height:18px; }
+  .auth-divider { display:flex; align-items:center; gap:10px; margin:4px 0; }
+  .auth-divider::before, .auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+  .auth-divider span { font-size:12px; color:var(--muted); }
+  .google-btn {
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:11px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); font-size:14px; font-weight:500;
+    color:var(--text); cursor:pointer; text-decoration:none;
+    transition:border-color 0.2s, background 0.2s;
+  }
+  .google-btn:hover { border-color:var(--accent1); background:var(--surface2); }
 </style>
 </head>
 <body>
 
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-modal">
+    <div class="auth-logo">SlideReview</div>
+    <div class="auth-subtitle">Feedback Senior Partner AI sur vos slides</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Connexion</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Créer un compte</button>
+    </div>
+
+    <!-- Login form -->
+    <div class="auth-form" id="authLoginForm">
+      <input class="auth-input" id="loginEmail" type="email" placeholder="Email">
+      <input class="auth-input" id="loginPassword" type="password" placeholder="Mot de passe">
+      <div class="auth-error" id="loginError"></div>
+      <button class="auth-submit" onclick="doLogin()">Se connecter</button>
+      <div style="text-align:right;margin-top:-4px;margin-bottom:4px">
+        <button onclick="showForgotPassword()" style="background:none;border:none;color:#7c6af7;font-size:13px;cursor:pointer;padding:0">Mot de passe oublié ?</button>
+      </div>
+      <div class="auth-divider"><span>ou</span></div>
+      <a class="google-btn" href="/auth/google">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuer avec Google
+      </a>
+    </div>
+
+    <!-- Forgot password form -->
+    <div class="auth-form hidden" id="authForgotForm">
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px">Entrez votre email pour recevoir un lien de réinitialisation.</p>
+      <input class="auth-input" id="forgotEmail" type="email" placeholder="Votre email">
+      <div class="auth-error" id="forgotError"></div>
+      <div id="forgotSuccess" style="display:none;color:#10b981;font-size:13px;margin-bottom:8px">Email envoyé ! Vérifiez votre boîte mail.</div>
+      <button class="auth-submit" onclick="doForgotPassword()">Envoyer le lien</button>
+      <button onclick="switchAuthTab('login')" style="background:none;border:none;color:#7c6af7;font-size:13px;cursor:pointer;margin-top:8px">← Retour à la connexion</button>
+    </div>
+
+    <!-- Register form -->
+    <div class="auth-form hidden" id="authRegisterForm">
+      <input class="auth-input" id="registerName" type="text" placeholder="Votre nom">
+      <input class="auth-input" id="registerEmail" type="email" placeholder="Email">
+      <input class="auth-input" id="registerPassword" type="password" placeholder="Mot de passe (6 caractères min)">
+      <div class="auth-error" id="registerError"></div>
+      <button class="auth-submit" onclick="doRegister()">Créer mon compte</button>
+      <div class="auth-divider"><span>ou</span></div>
+      <a class="google-btn" href="/auth/google">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuer avec Google
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- UPGRADE MODAL -->
+<div class="upgrade-overlay hidden" id="upgradeOverlay">
+  <div class="upgrade-modal">
+    <div class="upgrade-icon" id="upgradeIcon">🚀</div>
+    <h3 id="upgradeTitle">Passez à la vitesse supérieure</h3>
+    <p id="upgradeMessage">Vos 5 essais gratuits sont épuisés. Choisissez un forfait pour continuer.</p>
+    <a href="/pricing" class="btn-upgrade">Voir les forfaits →</a>
+    <button class="btn-cancel" onclick="document.getElementById('upgradeOverlay').classList.add('hidden')">Plus tard</button>
+  </div>
+</div>
+
 <header>
   <div class="logo">Slide<span>Review</span></div>
-  <div class="badge-partner">Senior Partner AI</div>
+  <div id="headerRight">
+    <div class="badge-partner">Senior Partner AI</div>
+  </div>
 </header>
 
 <div class="app">
@@ -346,90 +795,428 @@
           <p>Votre slide apparaîtra ici</p>
         </div>
         <img id="slidePreview" alt="Slide preview">
+        <button class="slide-clear-btn" id="slideClearBtn" title="Supprimer la slide">✕</button>
       </div>
       <div class="annotations-list" id="annotationsList"></div>
 
       <button class="five-sec-btn" id="fiveSecBtn" disabled>
         <span>⏱️</span> Test des 5 secondes
       </button>
+      <div class="five-sec-hint">Floute la slide 5 sec — simule ce qu'un dirigeant retient au premier coup d'œil.</div>
       <div id="fiveSecResult"></div>
+    </div>
+
+    <div class="context-box">
+      <div class="context-label">Contexte <span>— optionnel</span></div>
+      <textarea
+        id="contextInput"
+        class="context-textarea"
+        rows="3"
+        placeholder="Ex : Slide 3/12 d'un deck de transformation digitale pour un COMEX retail. Objectif : convaincre de lancer un POC IA en 6 mois."
+      ></textarea>
+      <div class="level-row">
+        <span class="level-label">Niveau</span>
+        <select id="levelSelect" class="level-select" onchange="updateLevelBadge()">
+          <option value="consultant">Consultant</option>
+          <option value="manager">Manager</option>
+          <option value="principal" selected>Principal</option>
+          <option value="senior">Senior Partner</option>
+        </select>
+        <span class="level-badge principal" id="levelBadge">Équilibré</span>
+      </div>
     </div>
 
     <button class="analyze-btn" id="analyzeBtn" disabled>
       Analyser la slide →
     </button>
+
+    <!-- CHAT -->
+    <div class="chat-box" id="chatBox" style="display:none;">
+      <div class="chat-header">
+        <span class="chat-header-title">💬 Chat avec le Senior Partner</span>
+        <button class="chat-clear-btn" onclick="clearChat()" title="Effacer la conversation">↺</button>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-bubble assistant">
+          <div class="chat-bubble-content" id="chatWelcome">L'analyse est terminée. Posez-moi vos questions sur cette slide.</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <textarea
+          id="chatInput"
+          class="chat-textarea"
+          rows="2"
+          placeholder="Pourquoi ce score ? Reformule le titre différemment…"
+          onkeydown="handleChatKey(event)"
+        ></textarea>
+        <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">↑</button>
+      </div>
+    </div>
   </div>
 
   <!-- RIGHT PANEL -->
   <div class="right-panel" id="rightPanel">
-    <div class="empty-state" id="emptyState">
-      <div class="big-icon">🎯</div>
-      <p>Uploadez un screenshot de votre slide et obtenez le feedback d'un Senior Partner de cabinet de conseil.</p>
+
+    <!-- TOP NAV -->
+    <div class="right-nav">
+      <button class="right-nav-btn active" id="navGuide" onclick="switchRightView('guide')">📖 Guide</button>
+      <button class="right-nav-btn" id="navAnalyse" onclick="switchRightView('analyse')"><span class="nav-tab-spinner" id="analyseSpinner"></span><span class="nav-tab-icon" id="analyseIcon">🔍</span> Analyse</button>
+      <button class="right-nav-btn" id="navHistorique" onclick="switchRightView('historique')">🕐 Historique</button>
     </div>
 
-    <div class="loading-state" id="loadingState">
-      <div class="spinner"></div>
-      <div class="loading-text">Analyse en cours par le Senior Partner...</div>
-    </div>
-
-    <!-- RESULTS (hidden until analysis) -->
-    <div id="resultsSection" style="display:none; flex-direction:column; gap:20px;">
-
-      <!-- VERDICT -->
-      <div class="verdict-card" id="verdictCard">
-        <div>
-          <div class="verdict-badge" id="verdictBadge"></div>
+    <!-- VIEW: ANALYSE -->
+    <div class="right-view" id="view-analyse" style="overflow:hidden; padding:0; gap:0;">
+      <!-- RESULTS HEADER: verdict + score (hidden until analysis) -->
+      <div id="resultsHeader" style="display:none; flex-direction:column; gap:16px; padding:24px 24px 0; flex-shrink:0;">
+        <div class="verdict-card" id="verdictCard">
+          <div>
+            <div class="verdict-badge" id="verdictBadge"></div>
+          </div>
+          <div class="verdict-text">
+            <div class="verdict-title" id="verdictTitle"></div>
+            <div style="font-size:12px; color:var(--muted); margin-top:2px;" id="slideTypeLabel"></div>
+          </div>
+          <div class="global-score" id="globalScore"></div>
         </div>
-        <div class="verdict-text">
-          <div class="verdict-title" id="verdictTitle"></div>
-          <div style="font-size:12px; color:var(--muted); margin-top:2px;" id="slideTypeLabel"></div>
+        <div class="score-card">
+          <h3>📊 Score Card</h3>
+          <div class="score-grid" id="scoreGrid"></div>
         </div>
-        <div class="global-score" id="globalScore"></div>
       </div>
 
-      <!-- SCORE CARD -->
-      <div class="score-card">
-        <h3>📊 Score Card</h3>
-        <div class="score-grid" id="scoreGrid"></div>
-      </div>
-
-      <!-- TABS -->
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('dimensions')">💬 Dimensions</button>
-        <button class="tab-btn" onclick="switchTab('reformulation')">✏️ Reformulation</button>
-        <button class="tab-btn" onclick="switchTab('templates')">📐 Templates</button>
-        <button class="tab-btn" onclick="switchTab('history')">🕐 Historique</button>
+      <!-- TABS: toujours visibles -->
+      <div class="tabs" style="flex-shrink:0; margin:16px 24px 0;">
+        <button class="tab-btn active" id="tabDimensions" onclick="tryTab('dimensions', 'starter')">💬 Dimensions</button>
+        <button class="tab-btn" id="tabReformulation" onclick="tryTab('reformulation', 'pro')">✏️ Reformulation</button>
+        <button class="tab-btn" id="tabTemplates" onclick="tryTab('templates', 'pro')">📐 Templates</button>
       </div>
 
       <!-- TAB: DIMENSIONS -->
-      <div class="tab-content active" id="tab-dimensions">
+      <div class="tab-content active" id="tab-dimensions" style="flex:1; overflow-y:auto; padding:16px 24px 24px;">
+        <!-- état vide -->
+        <div class="empty-state" id="emptyState">
+          <div class="big-icon">🎯</div>
+          <p>Uploadez un screenshot de votre slide et obtenez le feedback d'un Senior Partner de cabinet de conseil.</p>
+        </div>
+        <!-- état chargement -->
+        <div class="loading-state" id="loadingState">
+          <div class="loading-icon">🔍</div>
+          <div>
+            <div class="loading-step" id="loadingStep">Lecture de la slide...</div>
+            <div class="loading-substep" id="loadingSubstep">Envoi de l'image au modèle</div>
+          </div>
+          <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+          <div class="loading-steps-list" id="loadingStepsList"></div>
+        </div>
+        <!-- résultats -->
         <div id="dimensionsContainer"></div>
       </div>
 
       <!-- TAB: REFORMULATION -->
-      <div class="tab-content" id="tab-reformulation">
+      <div class="tab-content" id="tab-reformulation" style="flex:1; overflow-y:auto; padding:16px 24px 24px;">
+        <div class="empty-state" id="emptyReformulation">
+          <div class="big-icon">🎯</div>
+          <p>Uploadez un screenshot de votre slide et obtenez le feedback d'un Senior Partner de cabinet de conseil.</p>
+        </div>
         <div class="reformulation-card" id="reformulationCard"></div>
       </div>
 
       <!-- TAB: TEMPLATES -->
-      <div class="tab-content" id="tab-templates">
-        <div class="section-title">Templates recommandés pour votre slide</div>
+      <div class="tab-content" id="tab-templates" style="flex:1; overflow-y:auto; padding:16px 24px 24px;">
+        <div class="empty-state" id="emptyTemplates">
+          <div class="big-icon">🎯</div>
+          <p>Uploadez un screenshot de votre slide et obtenez le feedback d'un Senior Partner de cabinet de conseil.</p>
+        </div>
+        <div class="section-title" id="templatesSectionTitle" style="display:none;">Templates recommandés pour votre slide</div>
         <div class="templates-grid" id="templatesGrid"></div>
       </div>
-
-      <!-- TAB: HISTORY -->
-      <div class="tab-content" id="tab-history">
-        <div class="section-title">Analyses récentes</div>
-        <div class="history-list" id="historyList"></div>
-      </div>
-
     </div>
+
+    <!-- VIEW: HISTORIQUE -->
+    <div class="right-view" id="view-historique" style="flex-direction:column;overflow:hidden;">
+      <div class="history-header">
+        <span class="history-header-title">Mes analyses</span>
+        <span class="history-count" id="historyCount"></span>
+      </div>
+      <div class="history-list" id="historyList" style="overflow-y:auto;flex:1;">
+        <div class="history-empty">
+          <div class="history-empty-icon">📂</div>
+          <p>Aucune analyse enregistrée.<br>Uploadez une slide pour commencer.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: GUIDE -->
+    <div class="right-view active" id="view-guide">
+      <div class="guide-view">
+
+        <!-- INTRO / TITRE -->
+        <div class="guide-intro">
+          <div class="guide-intro-title">Guide des bonnes pratiques</div>
+          <p>Les standards non-négociables McKinsey, BCG et Bain pour des slides qui passent le test Senior Partner. Pas de jargon — que du concret.</p>
+          <div class="guide-refs">
+            <span class="guide-ref-chip">Pyramide Minto</span>
+            <span class="guide-ref-chip">McKinsey Way</span>
+            <span class="guide-ref-chip">MECE</span>
+            <span class="guide-ref-chip">Test des 5 sec</span>
+          </div>
+        </div>
+
+        <!-- SECTION 1: STRUCTURE -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">🧠</span>
+            <span class="guide-section-title">Structure & Logique</span>
+            <span class="guide-section-subtitle">Le squelette de la slide</span>
+          </div>
+
+          <div class="guide-rules">
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">1</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Titre = Conclusion, pas sujet</div>
+                <div class="guide-rule-desc">Le titre doit livrer le verdict, pas décrire le contenu. Le lecteur comprend l'essentiel avant même de lire le corps de la slide.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ À éviter</div>
+                  <span>« Analyse des ventes par région Q3 »</span>
+                  <div class="ex-good">✓ À utiliser</div>
+                  <span>« Les ventes région Sud chutent de 18% — action requise dès janvier »</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">2</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">1 slide = 1 message</div>
+                <div class="guide-rule-desc">Chaque slide doit pouvoir se résumer en une phrase. Si vous avez deux messages, vous avez deux slides. Résistez à la tentation d'en mettre plus.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">3</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Pyramide Minto (SCQA)</div>
+                <div class="guide-rule-desc">Structurez votre raisonnement du général au particulier. Commencez par la réponse, puis justifiez.</div>
+                <div class="guide-minto" style="margin-top:10px;padding:0;">
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#6366f1">S</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Situation</div>
+                      <div class="guide-minto-desc">Le contexte partagé par tous — ce que tout le monde sait déjà</div>
+                    </div>
+                  </div>
+                  <div class="guide-minto-arrow">↓</div>
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#ef4444">C</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Complication</div>
+                      <div class="guide-minto-desc">Ce qui a changé ou ce qui pose problème</div>
+                    </div>
+                  </div>
+                  <div class="guide-minto-arrow">↓</div>
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#f59e0b">Q</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Question</div>
+                      <div class="guide-minto-desc">La question implicite que se pose votre audience</div>
+                    </div>
+                  </div>
+                  <div class="guide-minto-arrow">↓</div>
+                  <div class="guide-minto-step">
+                    <div class="guide-minto-letter" style="background:#10b981">R</div>
+                    <div class="guide-minto-content">
+                      <div class="guide-minto-label">Réponse</div>
+                      <div class="guide-minto-desc">Votre recommandation — c'est votre titre de slide</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">4</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">MECE : exhaustif et sans doublon</div>
+                <div class="guide-rule-desc">Vos bullets doivent couvrir le sujet sans se chevaucher (Mutually Exclusive, Collectively Exhaustive). Chaque point apporte quelque chose de distinct. Idéalement 3 bullets, jamais plus de 5.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">5</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Le test « So what ? »</div>
+                <div class="guide-rule-desc">Pour chaque donnée ou constat, posez-vous : "Et alors ?" Si vous n'avez pas de réponse, le point ne mérite pas d'être sur la slide. Une donnée brute sans conclusion est inutile.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ Donnée brute</div>
+                  <span>« Le taux de churn est de 12% »</span>
+                  <div class="ex-good">✓ Donnée + insight</div>
+                  <span>« Le taux de churn à 12% coûte 2M€/an — cibler les 3 premiers mois réduit ce risque de moitié »</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 2: DESIGN -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">🎨</span>
+            <span class="guide-section-title">Design & Lisibilité</span>
+            <span class="guide-section-subtitle">Ce que l'œil voit en premier</span>
+          </div>
+
+          <div class="guide-tip">
+            <strong>Règle d'or :</strong> Si vous devez hésiter sur la mise en page, c'est qu'il y a trop d'éléments. Un slide bien designé ne se discute pas — il s'impose.
+          </div>
+
+          <div class="guide-rules">
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">1</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Hiérarchie visuelle claire</div>
+                <div class="guide-rule-desc">L'œil doit suivre un chemin : Titre → Message clé → Détails de support. Utilisez la taille, le gras et la couleur pour guider — pas pour décorer.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">2</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Le blanc, votre meilleur allié</div>
+                <div class="guide-rule-desc">L'espace vide (whitespace) n'est pas du vide — c'est de la respiration. Les slides surchargées perdent l'attention. Occupez 60-70% de la surface maximum.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">3</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">2 couleurs + 1 accent</div>
+                <div class="guide-rule-desc">Palette recommandée : une couleur principale (titres, accents forts), une couleur neutre (corps, fond), une couleur d'alerte pour les points critiques uniquement. Plus de 3 couleurs = slide de lycéen.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">4</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Titres de graphiques = conclusions</div>
+                <div class="guide-rule-desc">Comme pour les titres de slides, les légendes de graphiques doivent livrer l'insight, pas décrire le type de graphique.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ Description</div>
+                  <span>« Évolution du CA 2022-2024 »</span>
+                  <div class="ex-good">✓ Conclusion</div>
+                  <span>« Le CA a rebondi de 22% post-restructuration, portée par le segment B2B »</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">5</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Police : lisibilité > originalité</div>
+                <div class="guide-rule-desc">Titres ≥ 24pt, corps ≥ 12pt, légendes ≥ 10pt. Police sans-serif (Inter, Calibri, Helvetica). Jamais plus de 2 polices différentes sur un deck.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 3: MESSAGE & IMPACT -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">⚡</span>
+            <span class="guide-section-title">Message & Impact</span>
+            <span class="guide-section-subtitle">Ce que votre audience retient</span>
+          </div>
+
+          <div class="guide-rules">
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">1</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Le test des 5 secondes</div>
+                <div class="guide-rule-desc">Un décideur doit comprendre le message principal de votre slide en 5 secondes, en lisant uniquement le titre. Si ce n'est pas le cas, votre titre est trop faible ou votre slide trop complexe.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">2</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Parler des enjeux client, pas de votre process</div>
+                <div class="guide-rule-desc">Votre audience se fiche de votre méthode. Elle veut savoir ce que ça change pour elle. Formulez toujours du point de vue du bénéfice client : impact €, risque évité, opportunité saisie.</div>
+                <div class="guide-rule-example">
+                  <div class="ex-bad">✗ Centré process</div>
+                  <span>« Nous avons analysé 3 segments de marché via notre framework propriétaire »</span>
+                  <div class="ex-good">✓ Centré impact</div>
+                  <span>« Segment B2B représente 70% du potentiel — concentrer ici génère +4M€ sans ressource additionnelle »</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">3</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Quantifier chaque affirmation</div>
+                <div class="guide-rule-desc">« Significatif », « important », « majeur » ne veulent rien dire. Tout ce qui peut être chiffré doit l'être : montants €, %, délais, effectifs. Les chiffres créent la crédibilité et ancrent la mémoire.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">4</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">Une slide = une décision possible</div>
+                <div class="guide-rule-desc">Chaque slide doit implicitement appeler à une action ou une décision. Si votre audience peut tout lire et ne rien décider, la slide n'a pas sa place dans le deck.</div>
+              </div>
+            </div>
+
+            <div class="guide-rule">
+              <div class="guide-rule-num">5</div>
+              <div class="guide-rule-body">
+                <div class="guide-rule-title">La « elevator pitch » de votre slide</div>
+                <div class="guide-rule-desc">Avant de la créer, formulez votre slide en une phrase orale : "Cette slide montre que [QUOI] parce que [PREUVE], donc [ACTION]." Si vous ne pouvez pas le faire, la slide n'est pas encore prête.</div>
+                <div class="guide-rule-example">
+                  <span>« Cette slide montre que notre time-to-market a doublé (QUOI) à cause d'un process de validation à 7 étapes (PREUVE), donc il faut le réduire à 3 étapes dès Q1 (ACTION). »</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 4: CHECKLIST RAPIDE -->
+        <div class="guide-section">
+          <div class="guide-section-header">
+            <span class="guide-section-icon">✅</span>
+            <span class="guide-section-title">Checklist avant envoi</span>
+            <span class="guide-section-subtitle">30 secondes, zéro regret</span>
+          </div>
+          <div class="guide-checklist">
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Mon titre est une conclusion, pas un sujet</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>La slide a un seul message principal</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Chaque chiffre est accompagné d'un "so what"</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Mes bullets sont MECE : ≤ 5, sans doublon, sans redondance</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Test des 5 sec passé : le message est clair avec titre seul</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Pas de jargon interne ni d'acronyme non défini</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Les graphiques ont des titres-conclusions</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>La police est lisible à 1,5m de distance (≥ 12pt)</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>≤ 3 couleurs, hiérarchie visuelle respectée</span></div>
+            <div class="guide-check-item"><span class="guide-check-icon">🔲</span><span>Je peux décrire cette slide en 1 phrase avec QUOI / PREUVE / ACTION</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
 let currentAnalysis = null;
 let allTemplates = [];
+let userPlan = 'free';
+let userTrialCount = 5;
 
 // ── FILE UPLOAD ──────────────────────────────────────────
 const fileInput = document.getElementById('fileInput');
@@ -465,6 +1252,19 @@ function loadFile(file) {
   reader.readAsDataURL(file);
 }
 
+document.getElementById('slideClearBtn').addEventListener('click', () => {
+  slidePreview.src = '';
+  slidePreview.style.display = 'none';
+  slideContainer.classList.remove('has-image');
+  slideContainer.querySelector('.slide-placeholder').style.display = 'block';
+  analyzeBtn.disabled = true;
+  fiveSecBtn.disabled = true;
+  fileInput.value = '';
+  clearAnnotations();
+  document.getElementById('fiveSecResult').style.display = 'none';
+  showEmpty();
+});
+
 // ── 5-SECOND TEST ─────────────────────────────────────────
 let fiveSecTimer = null;
 fiveSecBtn.addEventListener('click', () => {
@@ -495,24 +1295,54 @@ analyzeBtn.addEventListener('click', async () => {
     return;
   }
 
+  // Check trial quota before calling API
+  if (userPlan === 'free' && userTrialCount <= 0) {
+    showUpgradeModal('quota', null);
+    return;
+  }
+
   showLoading();
 
   const formData = new FormData();
   if (fileInput.files[0]) {
     formData.append('image', fileInput.files[0]);
   } else {
-    // Convert data URL to blob
     const res = await fetch(slidePreview.src);
     const blob = await res.blob();
     formData.append('image', blob, 'slide.png');
   }
+  const context = document.getElementById('contextInput').value.trim();
+  if (context) formData.append('context', context);
+  const level = document.getElementById('levelSelect').value;
+  formData.append('level', level);
 
   try {
     const resp = await fetch('/analyze', { method: 'POST', body: formData });
     const data = await resp.json();
+    if (resp.status === 402) { showEmpty(); showUpgradeModal('quota', null); return; }
+
+    // Image uploadée n'est pas une slide
+    if (resp.status === 422 && data.error === 'not_a_slide') {
+      showEmpty();
+      if (userPlan === 'free') {
+        userTrialCount = data.trial_count ?? Math.max(0, userTrialCount - 1);
+        updatePlanBadge();
+      }
+      showUpgradeModal('not_a_slide', data.message);
+      return;
+    }
+
     if (data.error) { alert('Erreur : ' + data.error); showEmpty(); return; }
+
+    // Decrement trial count locally
+    if (userPlan === 'free') {
+      userTrialCount = Math.max(0, userTrialCount - 1);
+      updatePlanBadge();
+    }
+
     currentAnalysis = data;
     renderResults(data);
+    applyTabLocks();
   } catch(e) {
     alert('Erreur réseau : ' + e.message);
     showEmpty();
@@ -521,12 +1351,18 @@ analyzeBtn.addEventListener('click', async () => {
 
 // ── RENDER RESULTS ────────────────────────────────────────
 function renderResults(data) {
+  document.getElementById('analyseSpinner').classList.remove('active');
+  document.getElementById('analyseIcon').classList.remove('hidden');
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('loadingState').style.display = 'none';
-  const rs = document.getElementById('resultsSection');
-  rs.style.display = 'flex';
-  rs.style.flexDirection = 'column';
-  rs.style.gap = '20px';
+  // Show results header (verdict + score card)
+  const rh = document.getElementById('resultsHeader');
+  rh.style.display = 'flex';
+  rh.style.flexDirection = 'column';
+  // Hide empty states on all tabs
+  document.getElementById('emptyReformulation').style.display = 'none';
+  document.getElementById('emptyTemplates').style.display = 'none';
+  document.getElementById('templatesSectionTitle').style.display = '';
 
   renderVerdict(data);
   renderScoreCard(data.scores);
@@ -534,21 +1370,99 @@ function renderResults(data) {
   renderReformulation(data.dimensions?.reformulation);
   renderAnnotations(data.annotations);
   loadAndRenderTemplates(data.template_matches);
-  loadHistory();
+  // Show chat and reset conversation
+  clearChat();
+  showChat();
+}
+
+const LOADING_STEPS = [
+  { label: 'Lecture de la slide',     sub: 'Envoi de l\'image au modèle',          pct: 15,  icon: '📤' },
+  { label: 'Analyse de la structure', sub: 'Évaluation du message et de la logique', pct: 35, icon: '🏗️' },
+  { label: 'Évaluation du design',    sub: 'Vérification des principes visuels',    pct: 55,  icon: '🎨' },
+  { label: 'Calcul de l\'impact',     sub: 'Test des 5 secondes simulé',            pct: 72,  icon: '⚡' },
+  { label: 'Rédaction du verdict',    sub: 'Formulation des recommandations',       pct: 88,  icon: '✍️' },
+  { label: 'Finalisation',            sub: 'Structuration de la réponse JSON',      pct: 97,  icon: '📋' },
+];
+
+let _loadingInterval = null;
+
+const LEVEL_META = {
+  consultant: { label: 'Bienveillant', cls: 'consultant' },
+  manager:    { label: 'Équilibré',    cls: 'manager'    },
+  principal:  { label: 'Exigeant',     cls: 'principal'  },
+  senior:     { label: 'Intransigeant',cls: 'senior'     },
+};
+function updateLevelBadge() {
+  const val = document.getElementById('levelSelect').value;
+  const badge = document.getElementById('levelBadge');
+  const meta = LEVEL_META[val] || LEVEL_META.principal;
+  badge.textContent = meta.label;
+  badge.className = 'level-badge ' + meta.cls;
 }
 
 function showLoading() {
+  switchRightView('analyse');
+  document.getElementById('analyseSpinner').classList.add('active');
+  document.getElementById('analyseIcon').classList.add('hidden');
+  // Show Dimensions tab
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-dimensions').classList.add('active');
+  document.getElementById('tabDimensions').classList.add('active');
+  // Hide results header, empty state; show loading
+  document.getElementById('resultsHeader').style.display = 'none';
   document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('dimensionsContainer').innerHTML = '';
   const ls = document.getElementById('loadingState');
   ls.style.display = 'flex';
   ls.style.flexDirection = 'column';
+
+  // Build steps list
+  const listEl = document.getElementById('loadingStepsList');
+  listEl.innerHTML = LOADING_STEPS.map((s, i) => `
+    <div class="loading-step-item" id="lstep-${i}">
+      <div class="step-dot">${s.icon}</div>
+      <span>${s.label}</span>
+    </div>`).join('');
+
+  document.getElementById('progressFill').style.width = '5%';
+  document.getElementById('loadingStep').textContent = LOADING_STEPS[0].label;
+  document.getElementById('loadingSubstep').textContent = LOADING_STEPS[0].sub;
+
+  let stepIdx = 0;
+  // Timing: spread steps over ~25s (typical Claude response time)
+  const delays = [0, 3000, 7000, 12000, 18000, 23000];
+
+  LOADING_STEPS.forEach((s, i) => {
+    setTimeout(() => {
+      // Mark previous as done
+      if (i > 0) {
+        const prev = document.getElementById(`lstep-${i-1}`);
+        if (prev) { prev.classList.remove('active'); prev.classList.add('done'); prev.querySelector('.step-dot').textContent = '✓'; }
+      }
+      const cur = document.getElementById(`lstep-${i}`);
+      if (cur) cur.classList.add('active');
+      document.getElementById('loadingStep').textContent = s.label;
+      document.getElementById('loadingSubstep').textContent = s.sub;
+      document.getElementById('progressFill').style.width = s.pct + '%';
+    }, delays[i]);
+  });
 }
 
 function showEmpty() {
+  document.getElementById('analyseSpinner').classList.remove('active');
+  document.getElementById('analyseIcon').classList.remove('hidden');
   document.getElementById('loadingState').style.display = 'none';
-  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('dimensionsContainer').innerHTML = '';
   document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('emptyReformulation').style.display = 'flex';
+  document.getElementById('emptyTemplates').style.display = 'flex';
+  document.getElementById('templatesSectionTitle').style.display = 'none';
+  document.getElementById('reformulationCard').innerHTML = '';
+  document.getElementById('templatesGrid').innerHTML = '';
+  document.getElementById('chatBox').style.display = 'none';
+  chatHistory = [];
 }
 
 // VERDICT
@@ -709,13 +1623,47 @@ async function loadAndRenderTemplates(matches) {
   renderTemplates(allTemplates, matches || []);
 }
 
+// ── TEMPLATE SVG PREVIEWS ─────────────────────────────────
+const TEMPLATE_PREVIEWS = {
+  recommandation: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 158" style="font-family:Inter,system-ui,sans-serif">
+    <rect width="280" height="158" fill="#fff"/>
+    <rect width="280" height="4" fill="#6366f1"/>
+    <rect x="12" y="12" width="3" height="26" fill="#6366f1" rx="1"/>
+    <rect x="20" y="13" width="188" height="8" fill="#1a1d23" rx="2"/>
+    <rect x="20" y="25" width="128" height="6" fill="#9ca3af" rx="2"/>
+    <text x="216" y="22" font-size="5.5" fill="#6366f1" font-weight="700" opacity="0.65">TITRE-ACTION</text>
+    <line x1="12" y1="45" x2="268" y2="45" stroke="#e5e7eb" stroke-width="0.75"/>
+    <circle cx="19" cy="59" r="3.5" fill="#6366f1"/>
+    <rect x="28" y="55" width="165" height="7" fill="#374151" rx="2"/>
+    <rect x="28" y="65" width="108" height="5" fill="#d1d5db" rx="2"/>
+    <rect x="206" y="53" width="56" height="17" fill="rgba(99,102,241,0.1)" rx="3"/>
+    <text x="209" y="63" font-size="5.5" fill="#6366f1" font-weight="600">+2,4M€ / an</text>
+    <circle cx="19" cy="88" r="3.5" fill="#6366f1"/>
+    <rect x="28" y="84" width="152" height="7" fill="#374151" rx="2"/>
+    <rect x="28" y="94" width="128" height="5" fill="#d1d5db" rx="2"/>
+    <rect x="206" y="82" width="56" height="17" fill="rgba(99,102,241,0.1)" rx="3"/>
+    <text x="214" y="92" font-size="5.5" fill="#6366f1" font-weight="600">-30% coût</text>
+    <circle cx="19" cy="117" r="3.5" fill="#6366f1"/>
+    <rect x="28" y="113" width="175" height="7" fill="#374151" rx="2"/>
+    <rect x="28" y="123" width="92" height="5" fill="#d1d5db" rx="2"/>
+    <rect x="206" y="111" width="56" height="17" fill="rgba(99,102,241,0.1)" rx="3"/>
+    <text x="214" y="121" font-size="5.5" fill="#6366f1" font-weight="600">Q1 2025</text>
+    <rect x="12" y="136" width="148" height="17" fill="#6366f1" rx="4"/>
+    <text x="22" y="147.5" font-size="6.5" fill="white" font-weight="600">Décision demandée →</text>
+  </svg>`
+};
+
 function renderTemplates(templates, matches) {
   const grid = document.getElementById('templatesGrid');
   grid.innerHTML = templates.map(t => {
     const isMatch = matches.includes(t.id);
-    const rows = (t.structure || []).slice(0,4).map(r => `<div class="template-row">${r}</div>`).join('');
+    const rows = (t.structure || []).slice(0,3).map(r => `<div class="template-row">${r}</div>`).join('');
+    const preview = TEMPLATE_PREVIEWS[t.id]
+      ? `<div class="template-preview">${TEMPLATE_PREVIEWS[t.id]}<span class="template-preview-label">Aperçu</span></div>`
+      : '';
     return `
       <div class="template-card ${isMatch ? 'matched' : ''}" style="--card-color:${t.color}">
+        ${preview}
         <div class="template-icon">${t.icon}</div>
         <div class="template-name">${t.name}</div>
         <div class="template-desc">${t.description}</div>
@@ -725,47 +1673,416 @@ function renderTemplates(templates, matches) {
   }).join('');
 }
 
-// HISTORY
-async function loadHistory() {
-  const resp = await fetch('/history');
-  const history = await resp.json();
-  const list = document.getElementById('historyList');
-  if (!history.length) {
-    list.innerHTML = '<p style="color:var(--muted);font-size:13px">Aucune analyse enregistrée</p>';
-    return;
+// ── CHAT ──────────────────────────────────────────────────────────────────
+let chatHistory = [];  // [{role:'user'|'assistant', content:'...'}]
+
+function showChat() {
+  document.getElementById('chatBox').style.display = 'flex';
+}
+
+function clearChat() {
+  chatHistory = [];
+  const msgs = document.getElementById('chatMessages');
+  msgs.innerHTML = `<div class="chat-bubble assistant">
+    <div class="chat-bubble-content">L'analyse est terminée. Posez-moi vos questions sur cette slide.</div>
+  </div>`;
+  const input = document.getElementById('chatInput');
+  input.disabled = false;
+  input.placeholder = 'Pourquoi ce score ? Reformule le titre différemment…';
+  document.getElementById('chatSendBtn').disabled = false;
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
   }
-  list.innerHTML = history.map(h => {
-    const s = h.global_score || 0;
-    const color = s >= 75 ? 'var(--ok)' : s >= 50 ? 'var(--warn)' : 'var(--err)';
-    const vClass = (h.verdict||'').includes('PRÊT') ? 'ok' : (h.verdict||'').includes('RETRAVAILLER') ? 'warn' : 'err';
-    const vBg = vClass === 'ok' ? 'var(--ok)' : vClass === 'warn' ? 'var(--warn)' : 'var(--err)';
-    const vColor = vClass === 'warn' ? '#000' : '#fff';
-    return `
-      <div class="history-item">
-        <div class="history-score" style="background:${color}22;color:${color}">${s}</div>
-        <div class="history-info">
-          <div class="history-filename">${h.filename || 'slide'}</div>
-          <div class="history-meta">${h.timestamp || ''}</div>
-        </div>
-        <div class="history-verdict" style="background:${vBg};color:${vColor}">${h.verdict || ''}</div>
-      </div>`;
-  }).join('');
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || !currentAnalysis) return;
+
+  const sendBtn = document.getElementById('chatSendBtn');
+  input.value = '';
+  sendBtn.disabled = true;
+
+  // Append user bubble
+  const msgs = document.getElementById('chatMessages');
+  msgs.innerHTML += `<div class="chat-bubble user">
+    <div class="chat-bubble-content">${msg.replace(/</g,'&lt;')}</div>
+  </div>`;
+
+  // Append assistant streaming bubble
+  const assistantBubble = document.createElement('div');
+  assistantBubble.className = 'chat-bubble assistant';
+  const contentEl = document.createElement('div');
+  contentEl.className = 'chat-bubble-content streaming';
+  assistantBubble.appendChild(contentEl);
+  msgs.appendChild(assistantBubble);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  chatHistory.push({ role: 'user', content: msg });
+
+  try {
+    const resp = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: msg,
+        analysis: currentAnalysis,
+        history: chatHistory.slice(-10)
+      })
+    });
+
+    if (resp.status === 402) {
+      const err = await resp.json();
+      contentEl.classList.remove('streaming');
+      contentEl.innerHTML = `🔒 ${err.message} <a href="/pricing" style="color:#6d28d9;font-weight:600;">Voir les forfaits →</a>`;
+      sendBtn.disabled = false;
+      // Bloquer l'input
+      document.getElementById('chatInput').disabled = true;
+      document.getElementById('chatInput').placeholder = 'Limite atteinte — forfait payant requis';
+      return;
+    }
+
+    if (!resp.ok) throw new Error('Erreur serveur');
+
+    // Streaming read
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      // SSE format: "data: ...\n\n"
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          fullText += data;
+          contentEl.textContent = fullText;
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+      }
+    }
+
+    contentEl.classList.remove('streaming');
+    chatHistory.push({ role: 'assistant', content: fullText });
+
+  } catch(e) {
+    contentEl.classList.remove('streaming');
+    contentEl.textContent = 'Une erreur est survenue. Réessayez.';
+  }
+
+  sendBtn.disabled = false;
+  input.focus();
+}
+
+// HISTORY
+const TYPE_LABELS = {
+  recommandation:'Recommandation', etat_des_lieux:'État des lieux',
+  comparaison:'Comparaison', tendance:'Tendance', processus:'Processus',
+  kpis:'KPIs', minto:'Minto SCQA', before_after:'Avant/Après'
+};
+
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  const countEl = document.getElementById('historyCount');
+  list.innerHTML = '<div class="history-loading">Chargement…</div>';
+  try {
+    const resp = await fetch('/history');
+    if (resp.status === 401) {
+      list.innerHTML = '<div class="history-empty"><div class="history-empty-icon">🔒</div><p>Connectez-vous pour voir votre historique.</p></div>';
+      return;
+    }
+    if (resp.status === 402) {
+      list.innerHTML = `<div class="history-empty"><div class="history-empty-icon">⭐</div><p>L'historique est réservé au forfait <strong>Pro</strong>.</p><a href="/pricing" style="display:inline-block;margin-top:12px;padding:8px 18px;background:#7c6af7;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Voir les forfaits →</a></div>`;
+      countEl.textContent = '';
+      return;
+    }
+    const history = await resp.json();
+    if (!history.length) {
+      list.innerHTML = '<div class="history-empty"><div class="history-empty-icon">📂</div><p>Aucune analyse enregistrée.<br>Uploadez une slide pour commencer.</p></div>';
+      countEl.textContent = '';
+      return;
+    }
+    countEl.textContent = history.length + ' analyse' + (history.length > 1 ? 's' : '');
+    list.innerHTML = history.map(h => {
+      const s = h.global_score || 0;
+      const color = s >= 75 ? 'var(--ok)' : s >= 50 ? 'var(--warn)' : 'var(--err)';
+      const vClass = (h.verdict||'').includes('PRÊT') ? 'ok' : (h.verdict||'').includes('RETRAVAILLER') ? 'warn' : 'err';
+      const vBg = vClass === 'ok' ? 'var(--ok)' : vClass === 'warn' ? 'var(--warn)' : 'var(--err)';
+      const vColor = vClass === 'warn' ? '#000' : '#fff';
+      const typeLabel = TYPE_LABELS[h.slide_type] || '';
+      const thumbHtml = h.thumbnail
+        ? `<img src="${h.thumbnail}" alt="">`
+        : '🖼️';
+      return `
+        <div class="history-item" id="hitem-${h.id}" onclick="loadHistoryItem(${h.id})">
+          <div class="history-thumb">${thumbHtml}</div>
+          <div class="history-score" style="background:${color}22;color:${color}">${s}</div>
+          <div class="history-info">
+            <div class="history-filename">${h.filename || 'slide.png'}</div>
+            <div class="history-meta">
+              <span>${h.timestamp || ''}</span>
+              ${typeLabel ? `<span class="history-type-badge">${typeLabel}</span>` : ''}
+            </div>
+          </div>
+          <div class="history-verdict" style="background:${vBg};color:${vColor}">${h.verdict || ''}</div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<p style="color:var(--err);font-size:13px;padding:20px">Erreur de chargement</p>';
+  }
+}
+
+async function loadHistoryItem(id) {
+  // Highlight active item
+  document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+  const itemEl = document.getElementById('hitem-' + id);
+  if (itemEl) itemEl.classList.add('active');
+
+  try {
+    const resp = await fetch(`/history/${id}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    // Restore slide preview with thumbnail
+    const slidePreviewEl = document.getElementById('slidePreview');
+    const slideContainerEl = document.getElementById('slideContainer');
+    if (data.thumbnail) {
+      slidePreviewEl.src = data.thumbnail;
+      slidePreviewEl.style.display = 'block';
+      slideContainerEl.querySelector('.slide-placeholder') && (slideContainerEl.querySelector('.slide-placeholder').style.display = 'none');
+    }
+
+    // Switch to analyse view and render result
+    switchRightView('analyse');
+    currentAnalysis = data.result;
+    renderResults(data.result);
+
+    // Enable analyze button
+    document.getElementById('analyzeBtn').disabled = false;
+  } catch(e) {
+    console.error('Erreur chargement analyse', e);
+  }
+}
+
+// TOP-LEVEL NAV
+function switchRightView(view) {
+  document.querySelectorAll('.right-nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.right-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('nav' + view.charAt(0).toUpperCase() + view.slice(1)).classList.add('active');
+  document.getElementById('view-' + view).classList.add('active');
+  if (view === 'historique') loadHistory();
 }
 
 // TABS
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    const tabs = ['dimensions','reformulation','templates','history'];
+    const tabs = ['dimensions','reformulation','templates'];
     b.classList.toggle('active', tabs[i] === name);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'templates' && !allTemplates.length) loadAndRenderTemplates([]);
-  if (name === 'history') loadHistory();
+}
+
+// Check if plan level satisfies requirement
+const PLAN_ORDER = ['free', 'starter', 'pro'];
+function planMeets(required) {
+  return PLAN_ORDER.indexOf(userPlan) >= PLAN_ORDER.indexOf(required);
+}
+
+// Try switching tab — show upgrade modal if locked
+function tryTab(name, requiredPlan) {
+  if (!planMeets(requiredPlan)) {
+    const msgs = {
+      starter: { icon: '💬', title: 'Forfait Starter requis', msg: 'Accédez aux dimensions détaillées (Structure, Design, Impact) avec le forfait Starter.' },
+      pro: { icon: '✏️', title: 'Forfait Pro requis', msg: 'Les reformulations Senior Partner et les templates de référence sont disponibles avec le forfait Pro.' },
+    };
+    const m = msgs[requiredPlan] || msgs.starter;
+    showUpgradeModal(null, m);
+    return;
+  }
+  switchTab(name);
+}
+
+// Apply lock classes to tabs based on current plan
+function applyTabLocks() {
+  const tabDim = document.getElementById('tabDimensions');
+  const tabRef = document.getElementById('tabReformulation');
+  const tabTpl = document.getElementById('tabTemplates');
+  if (tabDim) tabDim.classList.toggle('locked', !planMeets('starter'));
+  if (tabRef) tabRef.classList.toggle('locked', !planMeets('pro'));
+  if (tabTpl) tabTpl.classList.toggle('locked', !planMeets('pro'));
+}
+
+// Show/update plan badge in header
+function updatePlanBadge() {
+  const el = document.getElementById('planBadge');
+  if (!el) return;
+  if (userPlan === 'starter') {
+    el.textContent = 'Starter';
+    el.className = 'plan-badge starter';
+    el.href = '/pricing';
+  } else if (userPlan === 'pro') {
+    el.textContent = 'Pro';
+    el.className = 'plan-badge pro';
+    el.href = '/pricing';
+  } else {
+    const low = userTrialCount <= 2;
+    el.textContent = userTrialCount + ' essai' + (userTrialCount > 1 ? 's' : '') + ' restant' + (userTrialCount > 1 ? 's' : '');
+    el.className = 'plan-badge free' + (low ? ' low' : '');
+    el.href = '/pricing';
+  }
+}
+
+// Show upgrade modal
+function showUpgradeModal(type, custom) {
+  if (type === 'not_a_slide') {
+    document.getElementById('upgradeIcon').textContent = '🖼️';
+    document.getElementById('upgradeTitle').textContent = 'Ce n\'est pas une slide';
+    const remaining = userPlan === 'free' ? ` Un crédit a été déduit (${userTrialCount} restant${userTrialCount > 1 ? 's' : ''}).` : '';
+    document.getElementById('upgradeMessage').textContent = (custom || 'Cette image ne semble pas être une slide de présentation.') + remaining;
+  } else if (custom) {
+    document.getElementById('upgradeIcon').textContent = custom.icon;
+    document.getElementById('upgradeTitle').textContent = custom.title;
+    document.getElementById('upgradeMessage').textContent = custom.msg;
+  } else {
+    document.getElementById('upgradeIcon').textContent = '🚀';
+    document.getElementById('upgradeTitle').textContent = 'Essais gratuits épuisés';
+    document.getElementById('upgradeMessage').textContent = 'Vous avez utilisé vos 5 analyses gratuites. Choisissez un forfait pour continuer.';
+  }
+  document.getElementById('upgradeOverlay').classList.remove('hidden');
 }
 
 // Init: preload templates
 loadAndRenderTemplates([]);
+
+// ── AUTH ─────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 ? 'login' : 'register') === tab);
+  });
+  document.getElementById('authLoginForm').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('authRegisterForm').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('authForgotForm').classList.add('hidden');
+}
+
+function showForgotPassword() {
+  document.getElementById('authLoginForm').classList.add('hidden');
+  document.getElementById('authRegisterForm').classList.add('hidden');
+  document.getElementById('authForgotForm').classList.remove('hidden');
+  document.querySelectorAll('.auth-tab').forEach(b => b.classList.remove('active'));
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotError');
+  const okEl = document.getElementById('forgotSuccess');
+  errEl.textContent = '';
+  okEl.style.display = 'none';
+  if (!email) { errEl.textContent = 'Entrez votre email.'; return; }
+  const res = await fetch('/auth/forgot-password', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email})
+  });
+  const data = await res.json();
+  if (data.ok) { okEl.style.display = 'block'; }
+  else { errEl.textContent = data.error || 'Erreur'; }
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  const res = await fetch('/auth/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email, password})
+  });
+  const data = await res.json();
+  if (data.ok) { onAuthSuccess(data.user); }
+  else { errEl.textContent = data.error; }
+}
+
+async function doRegister() {
+  const name = document.getElementById('registerName').value.trim();
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value;
+  const errEl = document.getElementById('registerError');
+  errEl.textContent = '';
+  const res = await fetch('/auth/register', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, email, password})
+  });
+  const data = await res.json();
+  if (data.ok) { onAuthSuccess(data.user); }
+  else { errEl.textContent = data.error; }
+}
+
+function onAuthSuccess(user) {
+  document.getElementById('authOverlay').classList.add('hidden');
+  userPlan = user.plan_level || 'free';
+  userTrialCount = (user.trial_count !== undefined) ? user.trial_count : 5;
+  renderUserHeader(user);
+  applyTabLocks();
+}
+
+function renderUserHeader(user) {
+  const el = document.getElementById('headerRight');
+  const initials = (user.name || user.email || '?')[0].toUpperCase();
+  const avatarHtml = user.avatar
+    ? `<img class="user-avatar" src="${user.avatar}" alt="">`
+    : `<div class="user-avatar-placeholder">${initials}</div>`;
+  const adminLink = user.is_admin
+    ? `<a href="/admin" style="font-size:12px;font-weight:600;color:#ef4444;text-decoration:none;margin-right:4px">⚙️ Admin</a>`
+    : '';
+  el.innerHTML = `
+    <div class="user-info">
+      <a href="/account" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:inherit">
+        ${avatarHtml}
+        <span class="user-name">${user.name || user.email}</span>
+      </a>
+      <a class="plan-badge free" id="planBadge" href="/pricing"></a>
+      ${adminLink}
+      <button class="logout-btn" onclick="doLogout()">Déconnexion</button>
+    </div>`;
+  updatePlanBadge();
+}
+
+async function doLogout() {
+  await fetch('/auth/logout');
+  window.location.reload();
+}
+
+// Check auth on load
+(async () => {
+  const res = await fetch('/me');
+  const data = await res.json();
+  if (data.authenticated) {
+    onAuthSuccess(data.user);
+  } else {
+    document.getElementById('authOverlay').classList.remove('hidden');
+  }
+})();
+
+// Allow Enter key on auth forms
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (!document.getElementById('authOverlay').classList.contains('hidden')) {
+    const loginHidden = document.getElementById('authLoginForm').classList.contains('hidden');
+    loginHidden ? doRegister() : doLogin();
+  }
+});
 </script>
 </body>
 </html>

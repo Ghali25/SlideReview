@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarifs — SlideReview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f5f7;
+      --white: #ffffff;
+      --text: #1a1d23;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --purple: #7c6af7;
+      --purple-light: #ede9fe;
+      --green: #10b981;
+      --orange: #f59e0b;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo { font-size: 1.2rem; font-weight: 700; color: var(--text); }
+    .logo span { color: var(--purple); }
+
+    .header-nav a {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-left: 1.5rem;
+      transition: color 0.15s;
+    }
+    .header-nav a:hover { color: var(--text); }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem 2rem;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.5px;
+    }
+
+    .hero h1 span { color: var(--purple); }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin: 0 auto 0.5rem;
+    }
+
+    .trial-badge {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      margin-top: 0.75rem;
+    }
+
+    /* ── CARDS ── */
+    .cards {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      align-items: stretch;
+      padding: 2.5rem 2rem 4rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      flex: 1;
+      min-width: 260px;
+      max-width: 300px;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+
+    .card.featured {
+      border-color: var(--purple);
+      box-shadow: 0 4px 24px rgba(124,106,247,0.15);
+    }
+
+    .card-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      align-self: flex-start;
+    }
+
+    .badge-free { background: #f3f4f6; color: var(--text-muted); }
+    .badge-starter { background: #ede9fe; color: #7c3aed; }
+    .badge-pro { background: #d1fae5; color: #065f46; }
+
+    .card-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-price {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+      letter-spacing: -1px;
+    }
+
+    .card-price span {
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .card-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .features {
+      list-style: none;
+      flex: 1;
+      margin-bottom: 2rem;
+    }
+
+    .features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.875rem;
+      margin-bottom: 0.65rem;
+      color: var(--text);
+    }
+
+    .features li .icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: 1px;
+    }
+
+    .features li.disabled { color: var(--text-muted); }
+
+    .check { color: var(--green); }
+    .cross { color: #d1d5db; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 0.85rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, transform 0.1s;
+      text-decoration: none;
+    }
+
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-starter {
+      background: var(--purple);
+      color: white;
+    }
+
+    .btn-pro {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── MANAGE SUBSCRIPTION ── */
+    .manage-link {
+      text-align: center;
+      padding-bottom: 3rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .manage-link a { color: var(--purple); text-decoration: none; }
+    .manage-link a:hover { text-decoration: underline; }
+
+    /* ── STATUS BANNER ── */
+    .status-banner {
+      max-width: 700px;
+      margin: 0 auto 0;
+      padding: 0 2rem;
+    }
+
+    .current-plan-banner {
+      background: var(--purple-light);
+      border: 1px solid #c4b5fd;
+      border-radius: 10px;
+      padding: 0.875rem 1.25rem;
+      font-size: 0.875rem;
+      color: #5b21b6;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .current-plan-banner.hidden { display: none; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1d23;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      display: none;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Slide<span>Review</span></div>
+  <nav class="header-nav">
+    <a href="/">← Retour à l'app</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1>Tarifs <span>simples</span></h1>
+  <p>Commencez gratuitement, passez à la vitesse supérieure quand vous êtes prêt.</p>
+  <div class="trial-badge">✨ 5 analyses offertes à la création du compte</div>
+</div>
+
+<div class="status-banner">
+  <div class="current-plan-banner hidden" id="currentPlanBanner">
+    <span>✅</span>
+    <span id="currentPlanText"></span>
+  </div>
+</div>
+
+<div class="cards">
+
+  <!-- FREE -->
+  <div class="card">
+    <span class="card-badge badge-free">Gratuit</span>
+    <div class="card-name">Free</div>
+    <div class="card-price">0€ <span>/ mois</span></div>
+    <div class="card-desc">Pour découvrir SlideReview sans engagement.</div>
+    <ul class="features">
+      <li><span class="icon check">✓</span> 5 analyses offertes</li>
+      <li><span class="icon check">✓</span> Score global + Verdict</li>
+      <li class="disabled"><span class="icon cross">✗</span> Dimensions détaillées</li>
+      <li class="disabled"><span class="icon cross">✗</span> Reformulations</li>
+      <li class="disabled"><span class="icon cross">✗</span> Templates de référence</li>
+      <li class="disabled"><span class="icon cross">✗</span> Historique des analyses</li>
+    </ul>
+    <a href="/" class="btn btn-outline">Commencer gratuitement</a>
+  </div>
+
+  <!-- STARTER -->
+  <div class="card featured">
+    <span class="card-badge badge-starter">Populaire</span>
+    <div class="card-name">Starter</div>
+    <div class="card-price">5€ <span>/ mois</span></div>
+    <div class="card-desc">Pour les consultants qui veulent un feedback régulier sur leurs slides.</div>
+    <ul class="features">
+      <li><span class="icon check">✓</span> Analyses <strong>illimitées</strong></li>
+      <li><span class="icon check">✓</span> Score global + Verdict</li>
+      <li><span class="icon check">✓</span> Dimensions détaillées (Structure, Design, Impact)</li>
+      <li class="disabled"><span class="icon cross">✗</span> Reformulations Senior Partner</li>
+      <li class="disabled"><span class="icon cross">✗</span> Templates de référence</li>
+      <li class="disabled"><span class="icon cross">✗</span> Historique des analyses</li>
+    </ul>
+    <button class="btn btn-starter" id="btnStarter" onclick="subscribe('starter')">
+      Choisir Starter
+    </button>
+  </div>
+
+  <!-- PRO -->
+  <div class="card">
+    <span class="card-badge badge-pro">Complet</span>
+    <div class="card-name">Pro</div>
+    <div class="card-price">10€ <span>/ mois</span></div>
+    <div class="card-desc">Pour les consultants qui veulent se mettre au niveau Senior Partner sur chaque slide.</div>
+    <ul class="features">
+      <li><span class="icon check">✓</span> Analyses <strong>illimitées</strong></li>
+      <li><span class="icon check">✓</span> Score global + Verdict</li>
+      <li><span class="icon check">✓</span> Dimensions détaillées</li>
+      <li><span class="icon check">✓</span> Reformulations Senior Partner</li>
+      <li><span class="icon check">✓</span> Templates de référence</li>
+      <li><span class="icon check">✓</span> Historique complet des analyses</li>
+    </ul>
+    <button class="btn btn-pro" id="btnPro" onclick="subscribe('pro')">
+      Choisir Pro
+    </button>
+  </div>
+
+</div>
+
+<div class="manage-link" id="manageLink" style="display:none">
+  Vous avez un abonnement actif. <a href="/subscription/portal">Gérer ou annuler mon abonnement →</a>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let currentPlan = null;
+
+  // Check current user plan
+  (async () => {
+    try {
+      const res = await fetch('/me');
+      const data = await res.json();
+      if (!data.authenticated) return;
+
+      currentPlan = data.user.plan_level;
+      const sub = data.user.subscription_plan;
+
+      if (currentPlan === 'starter' || currentPlan === 'pro') {
+        const banner = document.getElementById('currentPlanBanner');
+        banner.classList.remove('hidden');
+        document.getElementById('currentPlanText').textContent =
+          `Vous êtes actuellement sur le forfait ${currentPlan === 'starter' ? 'Starter (5€/mois)' : 'Pro (10€/mois)'}.`;
+        document.getElementById('manageLink').style.display = 'block';
+      }
+
+      // Disable current plan button
+      if (currentPlan === 'starter') document.getElementById('btnStarter').disabled = true;
+      if (currentPlan === 'pro') document.getElementById('btnPro').disabled = true;
+    } catch(e) {}
+  })();
+
+  async function subscribe(plan) {
+    const btn = document.getElementById(plan === 'starter' ? 'btnStarter' : 'btnPro');
+    btn.disabled = true;
+    btn.textContent = 'Chargement…';
+
+    try {
+      const res = await fetch(`/subscribe/${plan}`, { method: 'POST' });
+      if (res.status === 401) {
+        // Not logged in — redirect to app (login modal will open)
+        window.location.href = '/?showLogin=1';
+        return;
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        showToast(data.error || 'Erreur lors de la création du paiement.');
+        btn.disabled = false;
+        btn.textContent = plan === 'starter' ? 'Choisir Starter' : 'Choisir Pro';
+      }
+    } catch(e) {
+      showToast('Erreur réseau.');
+      btn.disabled = false;
+      btn.textContent = plan === 'starter' ? 'Choisir Starter' : 'Choisir Pro';
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3500);
+  }
+
+  // Show success message if returning from Stripe
+  if (new URLSearchParams(location.search).get('subscribed') === '1') {
+    window.location.href = '/';
+  }
+</script>
+
+</body>
+</html>

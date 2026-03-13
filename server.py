@@ -1,49 +1,260 @@
 import os
+import io
 import json
 import base64
 import re
+import stripe
+from PIL import Image
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session, Response, stream_with_context
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_bcrypt import Bcrypt
+from flask_mail import Mail, Message
+from authlib.integrations.flask_client import OAuth
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from sqlalchemy import text
+from models import db, User, Analysis
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///slidereview.db")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Flask-Mail
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
+app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD", "")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", os.getenv("MAIL_USERNAME", "noreply@slidereview.app"))
+
+# Fix postgres:// → postgresql:// (Railway uses old format)
+if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgres://"):
+    app.config["SQLALCHEMY_DATABASE_URI"] = app.config["SQLALCHEMY_DATABASE_URI"].replace("postgres://", "postgresql://", 1)
+
+db.init_app(app)
+bcrypt = Bcrypt(app)
+mail = Mail(app)
+
+login_manager = LoginManager(app)
+login_manager.login_view = None  # We handle redirects manually via JSON
+
+
+def run_migrations():
+    """Ajoute les nouvelles colonnes aux tables existantes. Idempotent (safe à relancer)."""
+    is_postgres = "postgresql" in str(db.engine.url)
+
+    if is_postgres:
+        # PostgreSQL supporte ADD COLUMN IF NOT EXISTS → tout en une transaction
+        stmts = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_count INTEGER DEFAULT 5",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS thumbnail TEXT",
+        ]
+        with db.engine.connect() as conn:
+            for stmt in stmts:
+                conn.execute(text(stmt))
+            conn.commit()
+    else:
+        # SQLite : pas de IF NOT EXISTS → on catch l'erreur si la colonne existe déjà
+        stmts = [
+            "ALTER TABLE users ADD COLUMN trial_count INTEGER DEFAULT 5",
+            "ALTER TABLE users ADD COLUMN subscription_plan VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN subscription_status VARCHAR(50)",
+            "ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0",
+            "ALTER TABLE analyses ADD COLUMN thumbnail TEXT",
+        ]
+        for stmt in stmts:
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text(stmt))
+                    conn.commit()
+            except Exception:
+                pass  # Colonne déjà existante, on continue
+
+
+# Create tables + run migrations on startup
+with app.app_context():
+    db.create_all()        # crée les tables manquantes
+    run_migrations()       # ajoute les colonnes manquantes aux tables existantes
+    # Auto-promote admin user if ADMIN_EMAIL is set
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    if admin_email:
+        admin_user = User.query.filter_by(email=admin_email).first()
+        if admin_user and not admin_user.is_admin:
+            admin_user.is_admin = True
+            db.session.commit()
+
+oauth = OAuth(app)
+google = oauth.register(
+    name="google",
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
+
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICES = {
+    "starter": os.getenv("STRIPE_STARTER_PRICE_ID", ""),
+    "pro": os.getenv("STRIPE_PRO_PRICE_ID", ""),
+}
+
+def get_reset_serializer():
+    return URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="password-reset")
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            return jsonify({"error": "Accès refusé"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def price_to_plan(price_id):
+    for plan, pid in STRIPE_PRICES.items():
+        if pid and pid == price_id:
+            return plan
+    return None
 
 SKILL_PATH = Path(__file__).parent / "skills/slide-reviewer/SKILL.md"
 
-# In-memory history (persists during session, resets on restart)
-_history = []
 
-# Load skill as system prompt
+def _repair_json(s: str) -> str:
+    """Fix common JSON issues produced by LLMs (trailing commas, truncation)."""
+    # Remove trailing commas before ] or }
+    s = re.sub(r',\s*([}\]])', r'\1', s)
+    # If JSON is truncated (no closing braces), close open structures
+    open_braces = s.count('{') - s.count('}')
+    open_brackets = s.count('[') - s.count(']')
+    if open_braces > 0 or open_brackets > 0:
+        # Truncated — close the last string/value then close structures
+        s = s.rstrip().rstrip(',')
+        # Close any unclosed string
+        if s.count('"') % 2 == 1:
+            s += '"'
+        s += ']' * open_brackets + '}' * open_braces
+    return s
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
 def get_system_prompt():
     if SKILL_PATH.exists():
         content = SKILL_PATH.read_text()
-        # Strip YAML frontmatter
         content = re.sub(r'^---.*?---\s*', '', content, flags=re.DOTALL)
         return content.strip()
     return "You are a senior consulting partner reviewing presentation slides."
 
+
 SYSTEM_PROMPT = get_system_prompt()
 
-ANALYSIS_PROMPT = """Analyse cette slide en tant que Senior Partner de cabinet de conseil.
+LEVEL_TONES = {
+    "consultant": (
+        "Tu es un Consultant junior bienveillant qui accompagne la progression. "
+        "Ton rôle est d'encourager sans jamais décourager. "
+        "IMPORTANT — nuance toujours tes remarques selon le contexte : une slide interne n'a pas les mêmes exigences qu'une slide client ; "
+        "un draft de travail n'est pas jugé comme une livraison finale. Dis-le explicitement quand c'est pertinent. "
+        "Formule les problèmes comme des pistes (ex : 'Si cette slide est destinée à un COMEX, tu pourrais renforcer le titre-action ; "
+        "pour un usage interne, elle fonctionne bien telle quelle.'). "
+        "Commence toujours par les points forts avant les axes d'amélioration. "
+        "Barème ajusté : une slide correcte mérite 60-70, une bonne slide 75-85."
+    ),
+    "manager": (
+        "Tu es un Manager de cabinet de conseil, équilibré et pragmatique. "
+        "Tu distingues ce qui est bloquant de ce qui est optionnel selon l'usage. "
+        "IMPORTANT — contextualise chaque recommandation : précise si elle s'applique surtout pour une présentation client, "
+        "un board, ou si c'est un nice-to-have pour un usage interne. "
+        "Évite les injonctions absolues — préfère (ex : 'Dans un contexte de présentation exécutive, ce titre gagnerait à inclure un verdict chiffré. "
+        "Pour un atelier de travail, il est suffisant.'). "
+        "Identifie clairement les 1-2 priorités réelles versus les ajustements secondaires. "
+        "Barème standard : slide correcte 50-65, bonne slide 65-78."
+    ),
+    "principal": (
+        "Tu es un Principal de cabinet de conseil, exigeant mais intelligent dans ta lecture du contexte. "
+        "Tu appliques les standards McKinsey/BCG tout en sachant que chaque slide a une audience et un objectif précis. "
+        "IMPORTANT — avant de critiquer, pose-toi la question : 'Est-ce un vrai problème pour l'objectif de cette slide ?' "
+        "Si une règle ne s'applique pas au contexte (ex : pas de chiffres disponibles, slide de transition, visuel de couverture), "
+        "dis-le clairement plutôt que de pénaliser aveuglément. "
+        "Sois direct sur les vrais défauts, nuancé sur les points de style ou de préférence. "
+        "Barème exigeant : slide correcte 45-60, bonne slide 65-75, excellente 80+."
+    ),
+    "senior": (
+        "Tu es un Senior Partner de cabinet de conseil, très exigeant sur la qualité de fond. "
+        "Tu n'as pas de tolérance pour le flou stratégique, les messages sans impact ou la logique bancale. "
+        "IMPORTANT — même à ce niveau, tu restes un professionnel nuancé, pas un censeur dogmatique : "
+        "si un choix stylistique ou structural a une justification valable dans le contexte donné, reconnais-le. "
+        "Distingue les défauts rédhibitoires (logique absente, message introuvable) des défauts de finition (alignement, couleur). "
+        "Formule les critiques avec précision chirurgicale : pas de vague, pas d'absolu inutile "
+        "(ex : 'Ce titre décrit le contenu au lieu de livrer le verdict — dans un contexte de décision, c'est bloquant.'). "
+        "Barème sévère : slide correcte 35-52, bonne slide 60-72, client-ready 75+."
+    ),
+}
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans backticks, respectant exactement ce schéma :
+ANALYSIS_PROMPT = """Analyse cette image en tant que Senior Partner de cabinet de conseil (McKinsey / BCG).
+
+Si l'image N'EST PAS une slide de présentation (ex : photo, logo, screenshot d'app, document Word, image aléatoire), réponds UNIQUEMENT avec ce JSON :
+{"is_slide": false, "reason": "<explication courte en français>"}
+
+Si c'est bien une slide, analyse-la avec rigueur. Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans backticks.
+
+━━━ RÈGLE FONDAMENTALE — NUANCE ET CONTEXTE ━━━
+
+Chaque recommandation doit tenir compte du contexte probable de la slide. Avant de formuler une critique :
+• Demande-toi si le "problème" est réel pour l'objectif de cette slide ou si c'est un biais de règle absolue.
+• Si un choix peut se justifier selon l'usage (interne vs client, draft vs livraison finale, réunion de travail vs board), mentionne-le.
+• Préfère des formulations conditionnelles quand c'est pertinent : "Si cette slide est destinée à…", "Dans un contexte de…, tu pourrais…", "Pour un usage interne, c'est suffisant ; pour un client, envisage…"
+• Ne jamais appliquer une règle McKinsey/BCG aveuglément si le contexte de la slide ne l'exige pas.
+• Les recommandations doivent être actionnables et priorisées : distingue l'essentiel (bloquant) du souhaitable (amélioration) du cosmétique (optionnel).
+
+━━━ BARÈME DE NOTATION (à appliquer strictement) ━━━
+
+Chaque dimension (structure, design, impact, message) se note de 0 à 100 :
+• 0–25  : Rédhibitoire. Absent, illisible, contre-productif. Ex : aucun titre, polices illisibles, aucun chiffre, message introuvable.
+• 26–45 : Insuffisant. Base présente mais majors défauts. Ex : titre descriptif (pas action), graphique sans légende, impact non chiffré, idée noyée.
+• 46–65 : Passable. Fonctionne mais sans excellence. Ex : titre correct sans verdict, design propre sans hiérarchie, message compris mais pas mémorable.
+• 66–80 : Bon. Standard cabinet. Ex : titre-action clair, visuels cohérents, 1-2 chiffres clés, logique argumentative solide.
+• 81–100 : Excellent / Best-in-class. Ex : titre-action avec verdict chiffré, design épuré, impact immédiat, mémorable en 5 secondes.
+
+Le score doit DISCRIMINER : une slide moyenne typique vaut 45-58. Une slide bien construite vaut 65-75. Seules les slides vraiment exceptionnelles dépassent 80.
+
+━━━ VERDICTS ━━━
+• "PRÊT POUR LE CLIENT" → global_score ≥ 72 ET aucune dimension < 55
+• "À RETRAVAILLER"      → global_score entre 45 et 71, ou 1-2 dimensions faibles
+• "REFAIRE"             → global_score < 45, ou au moins une dimension < 30
+
+━━━ SCHÉMA JSON ━━━
 
 {
+  "is_slide": true,
   "verdict": "PRÊT POUR LE CLIENT" | "À RETRAVAILLER" | "REFAIRE",
-  "global_score": <entier 0-100>,
+  "global_score": <entier 0-100 — moyenne pondérée : structure×30% + design×20% + impact×30% + message×20%>,
   "five_second_test": "<ce qu'un dirigeant comprend en lisant uniquement le titre pendant 5 secondes>",
   "slide_type": "recommandation" | "etat_des_lieux" | "comparaison" | "tendance" | "processus" | "kpis" | "minto" | "before_after",
   "scores": {
-    "structure": <entier 0-100>,
-    "design": <entier 0-100>,
-    "impact": <entier 0-100>,
-    "message": <entier 0-100>
+    "structure": <entier 0-100 selon barème>,
+    "design": <entier 0-100 selon barème>,
+    "impact": <entier 0-100 selon barème>,
+    "message": <entier 0-100 selon barème>
   },
   "dimensions": {
     "structure": {
@@ -80,14 +291,107 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans backticks, re
 }"""
 
 
-def load_history():
-    return _history
+# ─── AUTH ROUTES ────────────────────────────────────────────────────────────
+
+@app.route("/auth/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    name = data.get("name", "").strip()
+
+    if not email or not password:
+        return jsonify({"error": "Email et mot de passe requis"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Mot de passe trop court (6 caractères min)"}), 400
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Cet email est déjà utilisé"}), 409
+
+    user = User(
+        email=email,
+        name=name or email.split("@")[0],
+        password_hash=bcrypt.generate_password_hash(password).decode("utf-8"),
+    )
+    db.session.add(user)
+    db.session.commit()
+    login_user(user, remember=True)
+    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url}})
 
 
-def save_history(history):
-    global _history
-    _history = history
+@app.route("/auth/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
 
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.password_hash:
+        return jsonify({"error": "Email ou mot de passe incorrect"}), 401
+    if not bcrypt.check_password_hash(user.password_hash, password):
+        return jsonify({"error": "Email ou mot de passe incorrect"}), 401
+
+    login_user(user, remember=True)
+    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url}})
+
+
+@app.route("/auth/logout")
+def logout():
+    logout_user()
+    return jsonify({"ok": True})
+
+
+@app.route("/auth/google")
+def auth_google():
+    redirect_uri = url_for("auth_google_callback", _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route("/auth/google/callback")
+def auth_google_callback():
+    token = google.authorize_access_token()
+    userinfo = token.get("userinfo") or google.userinfo()
+
+    google_id = userinfo["sub"]
+    email = userinfo["email"].lower()
+    name = userinfo.get("name", email.split("@")[0])
+    avatar = userinfo.get("picture")
+
+    user = User.query.filter_by(google_id=google_id).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.google_id = google_id
+            user.avatar_url = avatar
+        else:
+            user = User(email=email, name=name, google_id=google_id, avatar_url=avatar)
+            db.session.add(user)
+    db.session.commit()
+    login_user(user, remember=True)
+    return redirect("/")
+
+
+@app.route("/me")
+def me():
+    if current_user.is_authenticated:
+        return jsonify({
+            "authenticated": True,
+            "user": {
+                "name": current_user.name,
+                "email": current_user.email,
+                "avatar": current_user.avatar_url,
+                "trial_count": current_user.trial_count,
+                "plan_level": current_user.plan_level,
+                "subscription_plan": current_user.subscription_plan,
+                "is_admin": current_user.is_admin,
+                "has_password": current_user.password_hash is not None,
+                "analyses_count": len(current_user.analyses),
+                "created_at": current_user.created_at.strftime("%d/%m/%Y") if current_user.created_at else None,
+            }
+        })
+    return jsonify({"authenticated": False})
+
+
+# ─── APP ROUTES ─────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -95,7 +399,11 @@ def index():
 
 
 @app.route("/analyze", methods=["POST"])
+@login_required
 def analyze():
+    if not current_user.can_analyze:
+        return jsonify({"error": "quota_exceeded", "upgrade_url": "/pricing"}), 402
+
     if "image" not in request.files:
         return jsonify({"error": "Aucune image fournie"}), 400
 
@@ -103,7 +411,6 @@ def analyze():
     image_bytes = image_file.read()
     image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
 
-    # Determine media type
     filename = image_file.filename.lower()
     if filename.endswith(".png"):
         media_type = "image/png"
@@ -114,10 +421,20 @@ def analyze():
     else:
         media_type = "image/png"
 
+    context = request.form.get("context", "").strip()
+    level   = request.form.get("level", "principal").strip()
+    tone    = LEVEL_TONES.get(level, LEVEL_TONES["principal"])
+
+    prompt_parts = [f"NIVEAU D'EXIGENCE : {tone}"]
+    if context:
+        prompt_parts.append(f"Contexte fourni par l'utilisateur : {context}")
+    prompt_parts.append(ANALYSIS_PROMPT)
+    prompt = "\n\n".join(prompt_parts)
+
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=2048,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             messages=[
                 {
@@ -131,30 +448,112 @@ def analyze():
                                 "data": image_b64,
                             },
                         },
-                        {"type": "text", "text": ANALYSIS_PROMPT},
+                        {"type": "text", "text": prompt},
                     ],
                 }
             ],
         )
 
         raw = response.content[0].text.strip()
-        # Clean potential markdown fences
-        raw = re.sub(r'^```(?:json)?\s*', '', raw)
-        raw = re.sub(r'\s*```$', '', raw)
-        result = json.loads(raw)
 
-        # Save to history
-        history = load_history()
-        history.insert(0, {
-            "id": datetime.now().isoformat(),
-            "filename": image_file.filename,
-            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "verdict": result.get("verdict"),
-            "global_score": result.get("global_score"),
-            "slide_type": result.get("slide_type"),
-            "scores": result.get("scores"),
-        })
-        save_history(history[:20])  # Keep last 20
+        # Extract JSON from optional markdown code block
+        json_block = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
+        if json_block:
+            raw = json_block.group(1).strip()
+
+        # Find the first '{' and parse exactly one JSON object.
+        # raw_decode() stops at the end of the first valid object,
+        # ignoring any trailing text/extra objects the LLM may have added.
+        start = raw.find('{')
+        if start == -1:
+            raise ValueError("Aucun objet JSON trouvé dans la réponse du modèle.")
+        raw = _repair_json(raw[start:])
+        try:
+            result, _ = json.JSONDecoder().raw_decode(raw)
+        except json.JSONDecodeError:
+            # Last resort: strip to last '}' and try again
+            end = raw.rfind('}')
+            result = json.loads(raw[:end + 1])
+
+        # Generate thumbnail (300px wide, JPEG quality 70)
+        thumbnail = None
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            img.thumbnail((300, 300), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG", quality=70)
+            thumbnail = "data:image/jpeg;base64," + base64.standard_b64encode(buf.getvalue()).decode()
+        except Exception:
+            pass
+
+        # Deduct credit regardless (API was called)
+        if current_user.plan_level == 'free':
+            current_user.trial_count = max(0, (current_user.trial_count or 0) - 1)
+            db.session.commit()
+
+        # Not a slide — return error with remaining trials info
+        if not result.get("is_slide", True):
+            reason = result.get("reason", "Cette image ne semble pas être une slide de présentation.")
+            return jsonify({
+                "error": "not_a_slide",
+                "message": reason,
+                "trial_count": current_user.trial_count,
+            }), 422
+
+        # ── Score calibration per level ──────────────────────────────────────
+        # The LLM tends to cluster around 50-60 regardless of persona.
+        # We apply a (scale, offset) per level to guarantee real differentiation.
+        #   consultant : generous  → raw 55 → 67,  raw 72 → 84
+        #   manager    : balanced  → raw 55 → 60,  raw 72 → 77
+        #   principal  : baseline  → raw 55 → 55,  raw 72 → 72  (unchanged)
+        #   senior     : harsh     → raw 55 → 43,  raw 72 → 58
+        LEVEL_CALIBRATION = {
+            "consultant": (1.00,  12),
+            "manager":    (1.00,   5),
+            "principal":  (1.00,   0),
+            "senior":     (0.88,  -5),
+        }
+        scale, offset = LEVEL_CALIBRATION.get(level, (1.00, 0))
+
+        scores = result.get("scores", {})
+        if scores:
+            calibrated = {
+                k: max(0, min(100, round(v * scale + offset)))
+                for k, v in scores.items()
+            }
+            result["scores"] = calibrated
+
+            computed_score = round(
+                calibrated.get("structure", 50) * 0.30 +
+                calibrated.get("design",    50) * 0.20 +
+                calibrated.get("impact",    50) * 0.30 +
+                calibrated.get("message",   50) * 0.20
+            )
+            result["global_score"] = computed_score
+
+            # Re-derive verdict from calibrated score
+            any_very_low = any(v < 30 for v in calibrated.values())
+            any_low      = any(v < 55 for v in calibrated.values())
+            if computed_score >= 72 and not any_low:
+                result["verdict"] = "PRÊT POUR LE CLIENT"
+            elif computed_score < 45 or any_very_low:
+                result["verdict"] = "REFAIRE"
+            else:
+                result["verdict"] = "À RETRAVAILLER"
+
+        analysis = Analysis(
+            user_id=current_user.id,
+            filename=image_file.filename,
+            timestamp=datetime.now().strftime("%d/%m/%Y %H:%M"),
+            verdict=result.get("verdict"),
+            global_score=result.get("global_score"),
+            slide_type=result.get("slide_type"),
+            scores_json=json.dumps(result.get("scores", {})),
+            result_json=json.dumps(result),
+            thumbnail=thumbnail,
+        )
+        db.session.add(analysis)
+        db.session.commit()
 
         return jsonify(result)
 
@@ -164,91 +563,436 @@ def analyze():
         return jsonify({"error": str(e)}), 500
 
 
+CHAT_SYSTEM = """Tu es un Senior Partner de cabinet de conseil (McKinsey/BCG), expert en slides.
+Tu réponds UNIQUEMENT aux questions liées à la slide analysée : scores, recommandations, reformulations, structure, design, message, impact.
+Si la question n'a aucun rapport avec la slide ou le conseil en présentation (ex : météo, recettes, blagues, code, actualité), réponds exactement : "Je suis là pour ta slide, pas pour ça."
+RÈGLE ABSOLUE : maximum 200 caractères par réponse. Pas une phrase de plus.
+Ultra-direct, comme un SMS de consultant senior. Pas d'intro, pas de politesse, juste la réponse.
+Si on te demande une reformulation, donne-la directement sans explication.
+Réponds toujours en français."""
+
+CHAT_FREE_LIMIT = 5  # messages max pour les free users
+
+@app.route("/chat", methods=["POST"])
+@login_required
+def chat():
+    data     = request.get_json()
+    message  = data.get("message", "").strip()
+    analysis = data.get("analysis", {})
+    history  = data.get("history", [])
+
+    if not message:
+        return jsonify({"error": "Message vide"}), 400
+
+    # Limite free users à 5 messages (on compte les messages user dans history + le nouveau)
+    if current_user.plan_level == 'free':
+        user_msgs = sum(1 for h in history if h.get("role") == "user")
+        if user_msgs >= CHAT_FREE_LIMIT:
+            return jsonify({"error": "chat_limit", "message": f"Limite de {CHAT_FREE_LIMIT} messages atteinte. Passez à un forfait payant pour un chat illimité."}), 402
+
+    # Build full analysis context (always injected in system prompt)
+    scores  = analysis.get("scores", {})
+    dims    = analysis.get("dimensions", {})
+    reform  = dims.get("reformulation", {})
+
+    context_lines = [
+        "=== ANALYSE DE LA SLIDE ===",
+        f"Verdict : {analysis.get('verdict','?')}",
+        f"Score global : {analysis.get('global_score','?')}/100",
+        f"Structure : {scores.get('structure','?')}/100",
+        f"Design : {scores.get('design','?')}/100",
+        f"Impact : {scores.get('impact','?')}/100",
+        f"Message : {scores.get('message','?')}/100",
+        f"Type de slide : {analysis.get('slide_type','?')}",
+        f"Test 5 secondes : {analysis.get('five_second_test','?')}",
+    ]
+    for dim in ["structure", "design", "impact"]:
+        d = dims.get(dim, {})
+        if d.get("recommandation"):
+            context_lines.append(f"Recommandation {dim} : {d['recommandation']}")
+        if d.get("problemes"):
+            context_lines.append(f"Problèmes {dim} : {'; '.join(d['problemes'][:2])}")
+    if reform.get("titre_actuel"):
+        context_lines.append(f"Titre actuel : {reform['titre_actuel']}")
+    if reform.get("titre_propose"):
+        context_lines.append(f"Titre proposé : {reform['titre_propose']}")
+
+    full_system = CHAT_SYSTEM + "\n\n" + "\n".join(context_lines)
+
+    # Rebuild messages: history (sans le dernier user) + nouveau message
+    # Le contexte est dans le system prompt → pas besoin de le répéter dans les messages
+    messages = []
+    for h in history[:-1]:   # history contient déjà le dernier msg user → on l'exclut
+        messages.append({"role": h["role"], "content": h["content"]})
+    messages.append({"role": "user", "content": message})
+
+    def generate():
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=120,
+            system=full_system,
+            messages=messages,
+        ) as stream:
+            for text in stream.text_stream:
+                yield f"data: {text}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
+
 @app.route("/history", methods=["GET"])
+@login_required
 def get_history():
-    return jsonify(load_history())
+    if current_user.plan_level != 'pro':
+        return jsonify({"error": "plan_required", "required_plan": "pro"}), 402
+    analyses = (
+        Analysis.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Analysis.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return jsonify([a.to_dict() for a in analyses])
+
+
+@app.route("/history/<int:analysis_id>", methods=["GET"])
+@login_required
+def get_history_item(analysis_id):
+    if current_user.plan_level != 'pro':
+        return jsonify({"error": "plan_required", "required_plan": "pro"}), 402
+    analysis = Analysis.query.filter_by(id=analysis_id, user_id=current_user.id).first_or_404()
+    return jsonify(analysis.to_full_dict())
 
 
 @app.route("/templates", methods=["GET"])
 def get_templates():
     templates = [
-        {
-            "id": "recommandation",
-            "name": "Recommandation",
-            "description": "Titre-action + 3 bullets quantifiés + call-to-action",
-            "structure": ["Titre-action (conclusion)", "Bullet 1 : action + impact €", "Bullet 2 : action + impact €", "Bullet 3 : action + impact €", "Décision demandée"],
-            "best_for": "Proposer des actions à un COMEX ou CFO",
-            "icon": "🎯",
-            "color": "#6366f1"
-        },
-        {
-            "id": "etat_des_lieux",
-            "name": "État des lieux",
-            "description": "Situation actuelle avec données chiffrées + constat",
-            "structure": ["Titre : constat chiffré", "Graphique ou KPIs clés", "3 insights factuels", "So what ?"],
-            "best_for": "Cadrer un problème avant de proposer des solutions",
-            "icon": "📊",
-            "color": "#3b82f6"
-        },
-        {
-            "id": "comparaison",
-            "name": "Comparaison",
-            "description": "Tableau 2 colonnes ou matrice de décision",
-            "structure": ["Titre : ce que la comparaison révèle", "Option A vs Option B", "Critères de comparaison pondérés", "Recommandation en bas"],
-            "best_for": "Aide à la décision entre plusieurs options",
-            "icon": "⚖️",
-            "color": "#8b5cf6"
-        },
-        {
-            "id": "tendance",
-            "name": "Tendance",
-            "description": "Graphique temporel avec insight sur la trajectoire",
-            "structure": ["Titre : ce que la tendance signifie", "Graphique temporel (ligne ou barres)", "Annotation du point clé", "Implication pour l'entreprise"],
-            "best_for": "Montrer une évolution et son impact business",
-            "icon": "📈",
-            "color": "#10b981"
-        },
-        {
-            "id": "processus",
-            "name": "Processus",
-            "description": "Étapes séquentielles avec responsables et délais",
-            "structure": ["Titre : objectif du processus", "Étape 1 → Étape 2 → Étape 3", "Responsable + délai par étape", "Livrable final"],
-            "best_for": "Plan d'action ou roadmap projet",
-            "icon": "🔄",
-            "color": "#f59e0b"
-        },
-        {
-            "id": "kpis",
-            "name": "KPIs Dashboard",
-            "description": "Métriques clés avec statut RAG (Rouge/Orange/Vert)",
-            "structure": ["Titre : performance globale", "4–6 KPIs avec valeur cible vs réel", "Code couleur RAG", "Actions prioritaires"],
-            "best_for": "Revue de performance ou steering committee",
-            "icon": "🎛️",
-            "color": "#ef4444"
-        },
-        {
-            "id": "minto",
-            "name": "Pyramide Minto (SCQA)",
-            "description": "Situation → Complication → Question → Réponse",
-            "structure": ["Titre : Réponse (conclusion)", "Situation (contexte partagé)", "Complication (problème)", "Question (ce que le client se pose)", "Réponse détaillée"],
-            "best_for": "Aligner l'audience avant d'aller dans le détail",
-            "icon": "🔺",
-            "color": "#ec4899"
-        },
-        {
-            "id": "before_after",
-            "name": "Avant / Après",
-            "description": "Contraste visuel entre état actuel et état cible",
-            "structure": ["Titre : ce que la transformation apporte", "Colonne Avant (état douloureux)", "Colonne Après (état cible)", "Effort / investissement requis"],
-            "best_for": "Vendre une transformation ou un projet de changement",
-            "icon": "✨",
-            "color": "#14b8a6"
-        }
+        {"id": "recommandation", "name": "Recommandation", "description": "Titre-action + 3 bullets quantifiés + call-to-action", "structure": ["Titre-action (conclusion)", "Bullet 1 : action + impact €", "Bullet 2 : action + impact €", "Bullet 3 : action + impact €", "Décision demandée"], "best_for": "Proposer des actions à un COMEX ou CFO", "icon": "🎯", "color": "#6366f1"},
+        {"id": "etat_des_lieux", "name": "État des lieux", "description": "Situation actuelle avec données chiffrées + constat", "structure": ["Titre : constat chiffré", "Graphique ou KPIs clés", "3 insights factuels", "So what ?"], "best_for": "Cadrer un problème avant de proposer des solutions", "icon": "📊", "color": "#3b82f6"},
+        {"id": "comparaison", "name": "Comparaison", "description": "Tableau 2 colonnes ou matrice de décision", "structure": ["Titre : ce que la comparaison révèle", "Option A vs Option B", "Critères de comparaison pondérés", "Recommandation en bas"], "best_for": "Aide à la décision entre plusieurs options", "icon": "⚖️", "color": "#8b5cf6"},
+        {"id": "tendance", "name": "Tendance", "description": "Graphique temporel avec insight sur la trajectoire", "structure": ["Titre : ce que la tendance signifie", "Graphique temporel (ligne ou barres)", "Annotation du point clé", "Implication pour l'entreprise"], "best_for": "Montrer une évolution et son impact business", "icon": "📈", "color": "#10b981"},
+        {"id": "processus", "name": "Processus", "description": "Étapes séquentielles avec responsables et délais", "structure": ["Titre : objectif du processus", "Étape 1 → Étape 2 → Étape 3", "Responsable + délai par étape", "Livrable final"], "best_for": "Plan d'action ou roadmap projet", "icon": "🔄", "color": "#f59e0b"},
+        {"id": "kpis", "name": "KPIs Dashboard", "description": "Métriques clés avec statut RAG (Rouge/Orange/Vert)", "structure": ["Titre : performance globale", "4–6 KPIs avec valeur cible vs réel", "Code couleur RAG", "Actions prioritaires"], "best_for": "Revue de performance ou steering committee", "icon": "🎛️", "color": "#ef4444"},
+        {"id": "minto", "name": "Pyramide Minto (SCQA)", "description": "Situation → Complication → Question → Réponse", "structure": ["Titre : Réponse (conclusion)", "Situation (contexte partagé)", "Complication (problème)", "Question (ce que le client se pose)", "Réponse détaillée"], "best_for": "Aligner l'audience avant d'aller dans le détail", "icon": "🔺", "color": "#ec4899"},
+        {"id": "before_after", "name": "Avant / Après", "description": "Contraste visuel entre état actuel et état cible", "structure": ["Titre : ce que la transformation apporte", "Colonne Avant (état douloureux)", "Colonne Après (état cible)", "Effort / investissement requis"], "best_for": "Vendre une transformation ou un projet de changement", "icon": "✨", "color": "#14b8a6"},
     ]
     return jsonify(templates)
 
 
+# ─── FORGOT / RESET PASSWORD ─────────────────────────────────────────────────
+
+@app.route("/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    user = User.query.filter_by(email=email).first()
+    # Always return OK to avoid email enumeration
+    if user and user.password_hash:
+        token = get_reset_serializer().dumps(email)
+        base_url = request.host_url.rstrip("/")
+        reset_url = f"{base_url}/auth/reset-password?token={token}"
+        try:
+            msg = Message(
+                subject="Réinitialisation de votre mot de passe — SlideReview",
+                recipients=[email],
+                html=f"""
+                <div style="font-family:Inter,sans-serif;max-width:500px;margin:0 auto;padding:32px 24px">
+                  <h2 style="color:#1a1d23;margin-bottom:8px">SlideReview</h2>
+                  <p style="color:#6b7280;margin-bottom:24px">Réinitialisation du mot de passe</p>
+                  <p style="color:#1a1d23">Bonjour,</p>
+                  <p style="color:#1a1d23">Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous :</p>
+                  <a href="{reset_url}" style="display:inline-block;margin:24px 0;padding:12px 24px;background:#7c6af7;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+                    Réinitialiser mon mot de passe
+                  </a>
+                  <p style="color:#9ca3af;font-size:13px">Ce lien expire dans 1 heure. Si vous n'avez pas fait cette demande, ignorez cet email.</p>
+                </div>
+                """,
+            )
+            mail.send(msg)
+        except Exception as e:
+            app.logger.error(f"Mail error: {e}")
+    return jsonify({"ok": True})
+
+
+@app.route("/auth/reset-password", methods=["GET"])
+def reset_password_page():
+    return send_from_directory(".", "reset_password.html")
+
+
+@app.route("/auth/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json()
+    token = data.get("token", "")
+    password = data.get("password", "")
+    if len(password) < 6:
+        return jsonify({"error": "Mot de passe trop court (6 caractères min)"}), 400
+    try:
+        email = get_reset_serializer().loads(token, max_age=3600)
+    except SignatureExpired:
+        return jsonify({"error": "Le lien a expiré. Recommencez."}), 400
+    except BadSignature:
+        return jsonify({"error": "Lien invalide."}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Utilisateur introuvable."}), 404
+
+    user.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+    db.session.commit()
+    login_user(user, remember=True)
+    return jsonify({"ok": True, "user": {"name": user.name, "email": user.email, "avatar": user.avatar_url, "plan_level": user.plan_level, "trial_count": user.trial_count}})
+
+
+# ─── ACCOUNT MANAGEMENT ──────────────────────────────────────────────────────
+
+@app.route("/account")
+@login_required
+def account_page():
+    return send_from_directory(".", "account.html")
+
+
+@app.route("/account/profile", methods=["POST"])
+@login_required
+def account_update_profile():
+    data = request.get_json()
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Nom invalide"}), 400
+    current_user.name = name
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/account/avatar", methods=["POST"])
+@login_required
+def account_update_avatar():
+    data = request.get_json()
+    avatar = data.get("avatar", "")
+    if not avatar or not avatar.startswith("data:image/"):
+        return jsonify({"error": "Image invalide"}), 400
+    # Limit size: base64 of 200x200 JPEG is ~15KB, cap at 200KB
+    if len(avatar) > 200 * 1024:
+        return jsonify({"error": "Image trop lourde"}), 400
+    current_user.avatar_url = avatar
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/account/change-password", methods=["POST"])
+@login_required
+def account_change_password():
+    if not current_user.password_hash:
+        return jsonify({"error": "Compte Google — pas de mot de passe"}), 400
+    data = request.get_json()
+    current_pwd = data.get("current_password", "")
+    new_pwd = data.get("new_password", "")
+    if not bcrypt.check_password_hash(current_user.password_hash, current_pwd):
+        return jsonify({"error": "Mot de passe actuel incorrect"}), 401
+    if len(new_pwd) < 6:
+        return jsonify({"error": "Minimum 6 caractères"}), 400
+    current_user.password_hash = bcrypt.generate_password_hash(new_pwd).decode("utf-8")
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/account/delete", methods=["POST"])
+@login_required
+def account_delete():
+    user = current_user
+    logout_user()
+    Analysis.query.filter_by(user_id=user.id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# ─── ADMIN ────────────────────────────────────────────────────────────────────
+
+@app.route("/admin")
+@login_required
+@admin_required
+def admin_panel():
+    return send_from_directory(".", "admin.html")
+
+
+@app.route("/admin/stats")
+@login_required
+@admin_required
+def admin_stats():
+    total_users = User.query.count()
+    paying_users = User.query.filter_by(subscription_status="active").count()
+    total_analyses = Analysis.query.count()
+    starter_users = User.query.filter_by(subscription_plan="starter", subscription_status="active").count()
+    pro_users = User.query.filter_by(subscription_plan="pro", subscription_status="active").count()
+    return jsonify({
+        "total_users": total_users,
+        "paying_users": paying_users,
+        "starter_users": starter_users,
+        "pro_users": pro_users,
+        "total_analyses": total_analyses,
+    })
+
+
+@app.route("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    users = User.query.order_by(User.created_at.desc()).all()
+    result = []
+    for u in users:
+        result.append({
+            "id": u.id,
+            "name": u.name,
+            "email": u.email,
+            "plan_level": u.plan_level,
+            "subscription_plan": u.subscription_plan,
+            "subscription_status": u.subscription_status,
+            "trial_count": u.trial_count,
+            "is_admin": u.is_admin,
+            "analyses_count": len(u.analyses),
+            "created_at": u.created_at.strftime("%d/%m/%Y") if u.created_at else "",
+        })
+    return jsonify(result)
+
+
+@app.route("/admin/users/<int:user_id>/plan", methods=["POST"])
+@login_required
+@admin_required
+def admin_set_plan(user_id):
+    data = request.get_json()
+    plan = data.get("plan", "free")
+    user = User.query.get_or_404(user_id)
+    if plan == "free":
+        user.subscription_plan = None
+        user.subscription_status = None
+    else:
+        user.subscription_plan = plan
+        user.subscription_status = "active"
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/users/<int:user_id>/reset-trials", methods=["POST"])
+@login_required
+@admin_required
+def admin_reset_trials(user_id):
+    user = User.query.get_or_404(user_id)
+    user.trial_count = 5
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/analyses")
+@login_required
+@admin_required
+def admin_analyses():
+    analyses = (
+        Analysis.query
+        .order_by(Analysis.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    result = []
+    for a in analyses:
+        result.append({
+            "id": a.id,
+            "filename": a.filename,
+            "verdict": a.verdict,
+            "global_score": a.global_score,
+            "slide_type": a.slide_type,
+            "timestamp": a.timestamp,
+            "user_email": a.user.email if a.user else "?",
+        })
+    return jsonify(result)
+
+
+# ─── PRICING & STRIPE ────────────────────────────────────────────────────────
+
+@app.route("/pricing")
+def pricing():
+    return send_from_directory(".", "pricing.html")
+
+
+@app.route("/subscribe/<plan>", methods=["POST"])
+@login_required
+def subscribe(plan):
+    if plan not in STRIPE_PRICES:
+        return jsonify({"error": "Plan invalide"}), 400
+    price_id = STRIPE_PRICES[plan]
+    if not price_id:
+        return jsonify({"error": "Stripe non configuré"}), 500
+
+    if not current_user.stripe_customer_id:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            name=current_user.name,
+            metadata={"user_id": current_user.id},
+        )
+        current_user.stripe_customer_id = customer.id
+        db.session.commit()
+
+    base_url = request.host_url.rstrip("/")
+    checkout = stripe.checkout.Session.create(
+        customer=current_user.stripe_customer_id,
+        payment_method_types=["card"],
+        line_items=[{"price": price_id, "quantity": 1}],
+        mode="subscription",
+        success_url=f"{base_url}/?subscribed=1",
+        cancel_url=f"{base_url}/pricing",
+    )
+    return jsonify({"url": checkout.url})
+
+
+@app.route("/subscription/portal")
+@login_required
+def subscription_portal():
+    if not current_user.stripe_customer_id:
+        return redirect("/pricing")
+    base_url = request.host_url.rstrip("/")
+    portal = stripe.billing_portal.Session.create(
+        customer=current_user.stripe_customer_id,
+        return_url=f"{base_url}/",
+    )
+    return redirect(portal.url)
+
+
+@app.route("/webhook/stripe", methods=["POST"])
+def stripe_webhook():
+    payload = request.get_data()
+    sig_header = request.headers.get("Stripe-Signature", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, stripe.error.SignatureVerificationError):
+        return jsonify({"error": "Invalid signature"}), 400
+
+    if event["type"] in ("customer.subscription.created", "customer.subscription.updated"):
+        sub = event["data"]["object"]
+        user = User.query.filter_by(stripe_customer_id=sub["customer"]).first()
+        if user:
+            price_id = sub["items"]["data"][0]["price"]["id"]
+            user.subscription_plan = price_to_plan(price_id) or user.subscription_plan
+            user.subscription_status = "active" if sub["status"] == "active" else sub["status"]
+            user.stripe_subscription_id = sub["id"]
+            db.session.commit()
+
+    elif event["type"] == "customer.subscription.deleted":
+        sub = event["data"]["object"]
+        user = User.query.filter_by(stripe_customer_id=sub["customer"]).first()
+        if user:
+            user.subscription_status = "canceled"
+            user.subscription_plan = None
+            db.session.commit()
+
+    return jsonify({"ok": True})
+
+
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
     port = int(os.getenv("PORT", 8080))
     debug = os.getenv("FLASK_ENV") == "development"
     print(f"🚀 SlideReview démarré → http://localhost:{port}")

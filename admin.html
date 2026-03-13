@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — SlideReview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f5f7; --white: #fff; --text: #1a1d23; --muted: #6b7280;
+      --border: #e5e7eb; --purple: #7c6af7; --red: #ef4444;
+      --green: #10b981; --orange: #f59e0b;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+
+    header {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: 0 2rem; height: 56px; display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-size: 1.2rem; font-weight: 700; }
+    .logo span { color: var(--purple); }
+    .admin-badge {
+      background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-right a { font-size: 0.875rem; color: var(--muted); text-decoration: none; }
+    .header-right a:hover { color: var(--text); }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+    .stat-card {
+      background: var(--white); border-radius: 12px; padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border);
+    }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+    .stat-value { font-size: 2rem; font-weight: 700; }
+    .stat-value.purple { color: var(--purple); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.orange { color: var(--orange); }
+
+    /* SECTION */
+    .section { background: var(--white); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 2rem; }
+    .section-header {
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .section-title { font-size: 1rem; font-weight: 600; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 0.75rem 1rem; font-size: 11px;
+      font-weight: 700; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+      background: #fafafa;
+    }
+    td { padding: 0.75rem 1rem; font-size: 0.875rem; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    /* BADGES */
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 12px;
+    }
+    .badge-free { background: #f3f4f6; color: var(--muted); }
+    .badge-starter { background: #ede9fe; color: #7c3aed; }
+    .badge-pro { background: #d1fae5; color: #065f46; }
+    .badge-admin { background: #fee2e2; color: #991b1b; }
+
+    /* ACTIONS */
+    .action-btns { display: flex; gap: 0.5rem; }
+    .btn-sm {
+      font-size: 12px; font-weight: 600; padding: 4px 10px;
+      border-radius: 6px; border: none; cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .btn-sm:hover { opacity: 0.8; }
+    .btn-plan { background: var(--purple); color: white; }
+    .btn-reset { background: var(--orange); color: white; }
+    .btn-remove { background: var(--red); color: white; }
+
+    /* PLAN SELECT */
+    .plan-select {
+      font-size: 12px; padding: 3px 6px; border: 1px solid var(--border);
+      border-radius: 6px; font-family: inherit; background: var(--white);
+    }
+
+    /* SCORE */
+    .score-dot {
+      display: inline-block; width: 28px; height: 28px; border-radius: 50%;
+      font-size: 11px; font-weight: 700; line-height: 28px; text-align: center;
+    }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      background: #1a1d23; color: white; padding: 0.75rem 1.5rem;
+      border-radius: 8px; font-size: 0.875rem; display: none; z-index: 100;
+    }
+
+    .spinner { color: var(--muted); padding: 2rem; text-align: center; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:0.75rem">
+    <div class="logo">Slide<span>Review</span></div>
+    <span class="admin-badge">Admin</span>
+  </div>
+  <div class="header-right">
+    <a href="/">← Retour à l'app</a>
+  </div>
+</header>
+
+<div class="main">
+  <h2>Tableau de bord</h2>
+
+  <!-- STATS -->
+  <div class="stats" id="statsGrid">
+    <div class="stat-card"><div class="stat-label">Utilisateurs</div><div class="stat-value" id="statUsers">—</div></div>
+    <div class="stat-card"><div class="stat-label">Abonnés payants</div><div class="stat-value green" id="statPaying">—</div></div>
+    <div class="stat-card"><div class="stat-label">Starter</div><div class="stat-value purple" id="statStarter">—</div></div>
+    <div class="stat-card"><div class="stat-label">Pro</div><div class="stat-value orange" id="statPro">—</div></div>
+    <div class="stat-card"><div class="stat-label">Analyses totales</div><div class="stat-value" id="statAnalyses">—</div></div>
+  </div>
+
+  <!-- USERS TABLE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">👥 Utilisateurs</div>
+      <button class="btn-sm btn-plan" onclick="loadUsers()">↻ Actualiser</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nom / Email</th>
+            <th>Plan</th>
+            <th>Essais restants</th>
+            <th>Analyses</th>
+            <th>Inscrit le</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody">
+          <tr><td colspan="7" class="spinner">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RECENT ANALYSES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📊 100 dernières analyses</div>
+      <button class="btn-sm btn-plan" onclick="loadAnalyses()">↻ Actualiser</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Utilisateur</th>
+            <th>Fichier</th>
+            <th>Score</th>
+            <th>Verdict</th>
+            <th>Type</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="analysesBody">
+          <tr><td colspan="7" class="spinner">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// PLAN LABELS
+const PLAN_LABELS = { free: 'Free', starter: 'Starter', pro: 'Pro' };
+const PLAN_CLASSES = { free: 'badge-free', starter: 'badge-starter', pro: 'badge-pro' };
+
+// ── STATS ──
+async function loadStats() {
+  const res = await fetch('/admin/stats');
+  if (!res.ok) { window.location.href = '/'; return; }
+  const d = await res.json();
+  document.getElementById('statUsers').textContent = d.total_users;
+  document.getElementById('statPaying').textContent = d.paying_users;
+  document.getElementById('statStarter').textContent = d.starter_users;
+  document.getElementById('statPro').textContent = d.pro_users;
+  document.getElementById('statAnalyses').textContent = d.total_analyses;
+}
+
+// ── USERS ──
+async function loadUsers() {
+  const body = document.getElementById('usersBody');
+  body.innerHTML = '<tr><td colspan="7" class="spinner">Chargement…</td></tr>';
+  const res = await fetch('/admin/users');
+  const users = await res.json();
+  body.innerHTML = users.map(u => {
+    const planClass = PLAN_CLASSES[u.plan_level] || 'badge-free';
+    const planLabel = PLAN_LABELS[u.plan_level] || u.plan_level;
+    const adminBadge = u.is_admin ? `<span class="badge badge-admin" style="margin-left:4px">Admin</span>` : '';
+    return `
+      <tr>
+        <td>${u.id}</td>
+        <td>
+          <div style="font-weight:500">${u.name || '—'}</div>
+          <div style="color:var(--muted);font-size:12px">${u.email}</div>
+        </td>
+        <td><span class="badge ${planClass}">${planLabel}</span>${adminBadge}</td>
+        <td>${u.trial_count}</td>
+        <td>${u.analyses_count}</td>
+        <td>${u.created_at}</td>
+        <td>
+          <div class="action-btns">
+            <select class="plan-select" id="plan-${u.id}">
+              <option value="free" ${u.plan_level === 'free' ? 'selected' : ''}>Free</option>
+              <option value="starter" ${u.plan_level === 'starter' ? 'selected' : ''}>Starter</option>
+              <option value="pro" ${u.plan_level === 'pro' ? 'selected' : ''}>Pro</option>
+            </select>
+            <button class="btn-sm btn-plan" onclick="setUserPlan(${u.id})">Appliquer</button>
+            <button class="btn-sm btn-reset" onclick="resetTrials(${u.id})">Reset essais</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+async function setUserPlan(userId) {
+  const plan = document.getElementById(`plan-${userId}`).value;
+  const res = await fetch(`/admin/users/${userId}/plan`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({plan})
+  });
+  const d = await res.json();
+  if (d.ok) { toast('Plan mis à jour ✓'); loadUsers(); loadStats(); }
+  else toast('Erreur : ' + (d.error || ''));
+}
+
+async function resetTrials(userId) {
+  const res = await fetch(`/admin/users/${userId}/reset-trials`, { method: 'POST' });
+  const d = await res.json();
+  if (d.ok) { toast('Essais réinitialisés ✓'); loadUsers(); }
+  else toast('Erreur');
+}
+
+// ── ANALYSES ──
+async function loadAnalyses() {
+  const body = document.getElementById('analysesBody');
+  body.innerHTML = '<tr><td colspan="7" class="spinner">Chargement…</td></tr>';
+  const res = await fetch('/admin/analyses');
+  const analyses = await res.json();
+
+  const TYPE_LABELS = {
+    recommandation:'Recommandation', etat_des_lieux:'État des lieux',
+    comparaison:'Comparaison', tendance:'Tendance', processus:'Processus',
+    kpis:'KPIs', minto:'Minto SCQA', before_after:'Avant/Après'
+  };
+  body.innerHTML = analyses.map((a, i) => {
+    const s = a.global_score || 0;
+    const color = s >= 75 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444';
+    const vClass = (a.verdict||'').includes('PRÊT') ? '#d1fae5' : (a.verdict||'').includes('RETRAVAILLER') ? '#fef3c7' : '#fee2e2';
+    const vText = (a.verdict||'').includes('PRÊT') ? '#065f46' : (a.verdict||'').includes('RETRAVAILLER') ? '#92400e' : '#991b1b';
+    return `
+      <tr>
+        <td>${a.id}</td>
+        <td style="font-size:12px;color:var(--muted)">${a.user_email}</td>
+        <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.filename || '—'}</td>
+        <td><span class="score-dot" style="background:${color}22;color:${color}">${s}</span></td>
+        <td><span class="badge" style="background:${vClass};color:${vText};font-size:10px">${(a.verdict||'—').replace('PRÊT POUR LE CLIENT','PRÊT').replace('À RETRAVAILLER','RETRAV.')}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${TYPE_LABELS[a.slide_type] || a.slide_type || '—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${a.timestamp || '—'}</td>
+      </tr>`;
+  }).join('');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// Init
+loadStats();
+loadUsers();
+loadAnalyses();
+</script>
+</body>
+</html>
