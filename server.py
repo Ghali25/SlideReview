@@ -8,7 +8,7 @@ from PIL import Image
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session
+from flask import Flask, request, jsonify, send_from_directory, redirect, url_for, session, Response, stream_with_context
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
@@ -168,26 +168,93 @@ def get_system_prompt():
 
 SYSTEM_PROMPT = get_system_prompt()
 
-ANALYSIS_PROMPT = """Analyse cette image en tant que Senior Partner de cabinet de conseil.
+LEVEL_TONES = {
+    "consultant": (
+        "Tu es un Consultant junior bienveillant qui accompagne la progression. "
+        "Ton rôle est d'encourager sans jamais décourager. "
+        "IMPORTANT — nuance toujours tes remarques selon le contexte : une slide interne n'a pas les mêmes exigences qu'une slide client ; "
+        "un draft de travail n'est pas jugé comme une livraison finale. Dis-le explicitement quand c'est pertinent. "
+        "Formule les problèmes comme des pistes (ex : 'Si cette slide est destinée à un COMEX, tu pourrais renforcer le titre-action ; "
+        "pour un usage interne, elle fonctionne bien telle quelle.'). "
+        "Commence toujours par les points forts avant les axes d'amélioration. "
+        "Barème ajusté : une slide correcte mérite 60-70, une bonne slide 75-85."
+    ),
+    "manager": (
+        "Tu es un Manager de cabinet de conseil, équilibré et pragmatique. "
+        "Tu distingues ce qui est bloquant de ce qui est optionnel selon l'usage. "
+        "IMPORTANT — contextualise chaque recommandation : précise si elle s'applique surtout pour une présentation client, "
+        "un board, ou si c'est un nice-to-have pour un usage interne. "
+        "Évite les injonctions absolues — préfère (ex : 'Dans un contexte de présentation exécutive, ce titre gagnerait à inclure un verdict chiffré. "
+        "Pour un atelier de travail, il est suffisant.'). "
+        "Identifie clairement les 1-2 priorités réelles versus les ajustements secondaires. "
+        "Barème standard : slide correcte 50-65, bonne slide 65-78."
+    ),
+    "principal": (
+        "Tu es un Principal de cabinet de conseil, exigeant mais intelligent dans ta lecture du contexte. "
+        "Tu appliques les standards McKinsey/BCG tout en sachant que chaque slide a une audience et un objectif précis. "
+        "IMPORTANT — avant de critiquer, pose-toi la question : 'Est-ce un vrai problème pour l'objectif de cette slide ?' "
+        "Si une règle ne s'applique pas au contexte (ex : pas de chiffres disponibles, slide de transition, visuel de couverture), "
+        "dis-le clairement plutôt que de pénaliser aveuglément. "
+        "Sois direct sur les vrais défauts, nuancé sur les points de style ou de préférence. "
+        "Barème exigeant : slide correcte 45-60, bonne slide 65-75, excellente 80+."
+    ),
+    "senior": (
+        "Tu es un Senior Partner de cabinet de conseil, très exigeant sur la qualité de fond. "
+        "Tu n'as pas de tolérance pour le flou stratégique, les messages sans impact ou la logique bancale. "
+        "IMPORTANT — même à ce niveau, tu restes un professionnel nuancé, pas un censeur dogmatique : "
+        "si un choix stylistique ou structural a une justification valable dans le contexte donné, reconnais-le. "
+        "Distingue les défauts rédhibitoires (logique absente, message introuvable) des défauts de finition (alignement, couleur). "
+        "Formule les critiques avec précision chirurgicale : pas de vague, pas d'absolu inutile "
+        "(ex : 'Ce titre décrit le contenu au lieu de livrer le verdict — dans un contexte de décision, c'est bloquant.'). "
+        "Barème sévère : slide correcte 35-52, bonne slide 60-72, client-ready 75+."
+    ),
+}
+
+ANALYSIS_PROMPT = """Analyse cette image en tant que Senior Partner de cabinet de conseil (McKinsey / BCG).
 
 Si l'image N'EST PAS une slide de présentation (ex : photo, logo, screenshot d'app, document Word, image aléatoire), réponds UNIQUEMENT avec ce JSON :
 {"is_slide": false, "reason": "<explication courte en français>"}
 
-Si c'est bien une slide, réponds avec le JSON complet ci-dessous (is_slide doit être true) :
+Si c'est bien une slide, analyse-la avec rigueur. Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans backticks.
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans backticks, respectant exactement ce schéma :
+━━━ RÈGLE FONDAMENTALE — NUANCE ET CONTEXTE ━━━
+
+Chaque recommandation doit tenir compte du contexte probable de la slide. Avant de formuler une critique :
+• Demande-toi si le "problème" est réel pour l'objectif de cette slide ou si c'est un biais de règle absolue.
+• Si un choix peut se justifier selon l'usage (interne vs client, draft vs livraison finale, réunion de travail vs board), mentionne-le.
+• Préfère des formulations conditionnelles quand c'est pertinent : "Si cette slide est destinée à…", "Dans un contexte de…, tu pourrais…", "Pour un usage interne, c'est suffisant ; pour un client, envisage…"
+• Ne jamais appliquer une règle McKinsey/BCG aveuglément si le contexte de la slide ne l'exige pas.
+• Les recommandations doivent être actionnables et priorisées : distingue l'essentiel (bloquant) du souhaitable (amélioration) du cosmétique (optionnel).
+
+━━━ BARÈME DE NOTATION (à appliquer strictement) ━━━
+
+Chaque dimension (structure, design, impact, message) se note de 0 à 100 :
+• 0–25  : Rédhibitoire. Absent, illisible, contre-productif. Ex : aucun titre, polices illisibles, aucun chiffre, message introuvable.
+• 26–45 : Insuffisant. Base présente mais majors défauts. Ex : titre descriptif (pas action), graphique sans légende, impact non chiffré, idée noyée.
+• 46–65 : Passable. Fonctionne mais sans excellence. Ex : titre correct sans verdict, design propre sans hiérarchie, message compris mais pas mémorable.
+• 66–80 : Bon. Standard cabinet. Ex : titre-action clair, visuels cohérents, 1-2 chiffres clés, logique argumentative solide.
+• 81–100 : Excellent / Best-in-class. Ex : titre-action avec verdict chiffré, design épuré, impact immédiat, mémorable en 5 secondes.
+
+Le score doit DISCRIMINER : une slide moyenne typique vaut 45-58. Une slide bien construite vaut 65-75. Seules les slides vraiment exceptionnelles dépassent 80.
+
+━━━ VERDICTS ━━━
+• "PRÊT POUR LE CLIENT" → global_score ≥ 72 ET aucune dimension < 55
+• "À RETRAVAILLER"      → global_score entre 45 et 71, ou 1-2 dimensions faibles
+• "REFAIRE"             → global_score < 45, ou au moins une dimension < 30
+
+━━━ SCHÉMA JSON ━━━
 
 {
   "is_slide": true,
   "verdict": "PRÊT POUR LE CLIENT" | "À RETRAVAILLER" | "REFAIRE",
-  "global_score": <entier 0-100>,
+  "global_score": <entier 0-100 — moyenne pondérée : structure×30% + design×20% + impact×30% + message×20%>,
   "five_second_test": "<ce qu'un dirigeant comprend en lisant uniquement le titre pendant 5 secondes>",
   "slide_type": "recommandation" | "etat_des_lieux" | "comparaison" | "tendance" | "processus" | "kpis" | "minto" | "before_after",
   "scores": {
-    "structure": <entier 0-100>,
-    "design": <entier 0-100>,
-    "impact": <entier 0-100>,
-    "message": <entier 0-100>
+    "structure": <entier 0-100 selon barème>,
+    "design": <entier 0-100 selon barème>,
+    "impact": <entier 0-100 selon barème>,
+    "message": <entier 0-100 selon barème>
   },
   "dimensions": {
     "structure": {
@@ -355,9 +422,14 @@ def analyze():
         media_type = "image/png"
 
     context = request.form.get("context", "").strip()
-    prompt = ANALYSIS_PROMPT
+    level   = request.form.get("level", "principal").strip()
+    tone    = LEVEL_TONES.get(level, LEVEL_TONES["principal"])
+
+    prompt_parts = [f"NIVEAU D'EXIGENCE : {tone}"]
     if context:
-        prompt = f"Contexte fourni par l'utilisateur : {context}\n\n{ANALYSIS_PROMPT}"
+        prompt_parts.append(f"Contexte fourni par l'utilisateur : {context}")
+    prompt_parts.append(ANALYSIS_PROMPT)
+    prompt = "\n\n".join(prompt_parts)
 
     try:
         response = client.messages.create(
@@ -388,16 +460,20 @@ def analyze():
         json_block = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
         if json_block:
             raw = json_block.group(1).strip()
-        else:
-            start = raw.find('{')
+
+        # Find the first '{' and parse exactly one JSON object.
+        # raw_decode() stops at the end of the first valid object,
+        # ignoring any trailing text/extra objects the LLM may have added.
+        start = raw.find('{')
+        if start == -1:
+            raise ValueError("Aucun objet JSON trouvé dans la réponse du modèle.")
+        raw = _repair_json(raw[start:])
+        try:
+            result, _ = json.JSONDecoder().raw_decode(raw)
+        except json.JSONDecodeError:
+            # Last resort: strip to last '}' and try again
             end = raw.rfind('}')
-            if start != -1 and end != -1:
-                raw = raw[start:end + 1]
-
-        # Repair common JSON issues before parsing
-        raw = _repair_json(raw)
-
-        result = json.loads(raw)
+            result = json.loads(raw[:end + 1])
 
         # Generate thumbnail (300px wide, JPEG quality 70)
         thumbnail = None
@@ -424,6 +500,47 @@ def analyze():
                 "trial_count": current_user.trial_count,
             }), 422
 
+        # ── Score calibration per level ──────────────────────────────────────
+        # The LLM tends to cluster around 50-60 regardless of persona.
+        # We apply a (scale, offset) per level to guarantee real differentiation.
+        #   consultant : generous  → raw 55 → 67,  raw 72 → 84
+        #   manager    : balanced  → raw 55 → 60,  raw 72 → 77
+        #   principal  : baseline  → raw 55 → 55,  raw 72 → 72  (unchanged)
+        #   senior     : harsh     → raw 55 → 43,  raw 72 → 58
+        LEVEL_CALIBRATION = {
+            "consultant": (1.00,  12),
+            "manager":    (1.00,   5),
+            "principal":  (1.00,   0),
+            "senior":     (0.88,  -5),
+        }
+        scale, offset = LEVEL_CALIBRATION.get(level, (1.00, 0))
+
+        scores = result.get("scores", {})
+        if scores:
+            calibrated = {
+                k: max(0, min(100, round(v * scale + offset)))
+                for k, v in scores.items()
+            }
+            result["scores"] = calibrated
+
+            computed_score = round(
+                calibrated.get("structure", 50) * 0.30 +
+                calibrated.get("design",    50) * 0.20 +
+                calibrated.get("impact",    50) * 0.30 +
+                calibrated.get("message",   50) * 0.20
+            )
+            result["global_score"] = computed_score
+
+            # Re-derive verdict from calibrated score
+            any_very_low = any(v < 30 for v in calibrated.values())
+            any_low      = any(v < 55 for v in calibrated.values())
+            if computed_score >= 72 and not any_low:
+                result["verdict"] = "PRÊT POUR LE CLIENT"
+            elif computed_score < 45 or any_very_low:
+                result["verdict"] = "REFAIRE"
+            else:
+                result["verdict"] = "À RETRAVAILLER"
+
         analysis = Analysis(
             user_id=current_user.id,
             filename=image_file.filename,
@@ -444,6 +561,87 @@ def analyze():
         return jsonify({"error": f"Réponse JSON invalide : {str(e)}", "raw": raw}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+CHAT_SYSTEM = """Tu es un Senior Partner de cabinet de conseil (McKinsey/BCG), expert en slides.
+Tu réponds UNIQUEMENT aux questions liées à la slide analysée : scores, recommandations, reformulations, structure, design, message, impact.
+Si la question n'a aucun rapport avec la slide ou le conseil en présentation (ex : météo, recettes, blagues, code, actualité), réponds exactement : "Je suis là pour ta slide, pas pour ça."
+RÈGLE ABSOLUE : maximum 200 caractères par réponse. Pas une phrase de plus.
+Ultra-direct, comme un SMS de consultant senior. Pas d'intro, pas de politesse, juste la réponse.
+Si on te demande une reformulation, donne-la directement sans explication.
+Réponds toujours en français."""
+
+CHAT_FREE_LIMIT = 5  # messages max pour les free users
+
+@app.route("/chat", methods=["POST"])
+@login_required
+def chat():
+    data     = request.get_json()
+    message  = data.get("message", "").strip()
+    analysis = data.get("analysis", {})
+    history  = data.get("history", [])
+
+    if not message:
+        return jsonify({"error": "Message vide"}), 400
+
+    # Limite free users à 5 messages (on compte les messages user dans history + le nouveau)
+    if current_user.plan_level == 'free':
+        user_msgs = sum(1 for h in history if h.get("role") == "user")
+        if user_msgs >= CHAT_FREE_LIMIT:
+            return jsonify({"error": "chat_limit", "message": f"Limite de {CHAT_FREE_LIMIT} messages atteinte. Passez à un forfait payant pour un chat illimité."}), 402
+
+    # Build full analysis context (always injected in system prompt)
+    scores  = analysis.get("scores", {})
+    dims    = analysis.get("dimensions", {})
+    reform  = dims.get("reformulation", {})
+
+    context_lines = [
+        "=== ANALYSE DE LA SLIDE ===",
+        f"Verdict : {analysis.get('verdict','?')}",
+        f"Score global : {analysis.get('global_score','?')}/100",
+        f"Structure : {scores.get('structure','?')}/100",
+        f"Design : {scores.get('design','?')}/100",
+        f"Impact : {scores.get('impact','?')}/100",
+        f"Message : {scores.get('message','?')}/100",
+        f"Type de slide : {analysis.get('slide_type','?')}",
+        f"Test 5 secondes : {analysis.get('five_second_test','?')}",
+    ]
+    for dim in ["structure", "design", "impact"]:
+        d = dims.get(dim, {})
+        if d.get("recommandation"):
+            context_lines.append(f"Recommandation {dim} : {d['recommandation']}")
+        if d.get("problemes"):
+            context_lines.append(f"Problèmes {dim} : {'; '.join(d['problemes'][:2])}")
+    if reform.get("titre_actuel"):
+        context_lines.append(f"Titre actuel : {reform['titre_actuel']}")
+    if reform.get("titre_propose"):
+        context_lines.append(f"Titre proposé : {reform['titre_propose']}")
+
+    full_system = CHAT_SYSTEM + "\n\n" + "\n".join(context_lines)
+
+    # Rebuild messages: history (sans le dernier user) + nouveau message
+    # Le contexte est dans le system prompt → pas besoin de le répéter dans les messages
+    messages = []
+    for h in history[:-1]:   # history contient déjà le dernier msg user → on l'exclut
+        messages.append({"role": h["role"], "content": h["content"]})
+    messages.append({"role": "user", "content": message})
+
+    def generate():
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=120,
+            system=full_system,
+            messages=messages,
+        ) as stream:
+            for text in stream.text_stream:
+                yield f"data: {text}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 
 @app.route("/history", methods=["GET"])
